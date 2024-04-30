@@ -88,6 +88,11 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->timeslice_tracker = 0;
+  p->ctime = ticks;
+  p->stime = 0;
+  p->retime = 0;
+  p->rutime = 0;
 
   release(&ptable.lock);
 
@@ -531,4 +536,28 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+void 
+clock(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state == RUNNING)
+    {
+      p->timeslice_tracker++;
+      p->rutime++;
+    }
+    else if (p->state == SLEEPING)
+    {
+      p->stime++;
+    }
+    else if (p->state == RUNNABLE)
+    {
+      p->retime++;
+    }
+  }
+  release(&ptable.lock);
 }
