@@ -6,18 +6,14 @@
 
 void CPU_Bound (void) {
   for (int i = 0; i < 100; i++) {
-    for (int j = 0; j < 1000000; j++){
-
-    }
+    for (int j = 0; j < 1000000; j++){}
   }
 }
 
 void S_Bound (void) {
   for (int i = 0; i < 20; i++) {
-    for (int j = 0; j < 1000000; j++){
-      
-    }
-    //yield(); -> Criar yield fora do kernel
+    for (int j = 0; j < 1000000; j++){}
+    yield();
   }
 }
 
@@ -29,17 +25,20 @@ void IO_Bound (void) {
 
 void Create_Process (int type) {
   switch (type) {
-  case CPU_BOUND:
-    CPU_Bound ();
-    break;
-  
-  case S_BOUND:
-    S_Bound ();
-    break;
+    case CPU_BOUND:
+      CPU_Bound ();
+      break;
+    
+    case S_BOUND:
+      S_Bound ();
+      break;
 
-  case IO_BOUND:
-    IO_Bound ();
-    break;
+    case IO_BOUND:
+      IO_Bound ();
+      break;
+      
+    default:
+      break;
   }
 }
 
@@ -57,11 +56,13 @@ int main (int argc, char *argv[]) {
     int process_id = fork();
     if (process_id == 0) {
       Create_Process (getpid() % 3);
+      exit ();
     }
-    exit ();
   }
   
-  // Chamar função wait2 e calcular rutime, retime e stime médios
+  for (int i = 0; i < num_processes; i++) {
+    wait();
+  }
 
-  return 0;
+  exit();
 }
