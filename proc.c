@@ -188,7 +188,6 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
-
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -196,6 +195,7 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+  np->priority = MEDIUM;
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
@@ -531,4 +531,27 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int change_prio(int priority){
+  struct proc *p = myproc();
+  enum procpriority * prio = &p->priority;
+  
+  switch (priority){
+  case 1:
+    *prio =  LOW;
+    break;
+  case 2:
+    *prio =  MEDIUM;
+    break;
+  case 3:
+    *prio =  HIGH;
+    break;
+  case 4:
+    *prio =  REALTIME;
+    break;
+  default:
+    return -1;
+  }
+  return 0;
 }
