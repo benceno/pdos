@@ -7,7 +7,7 @@
 # Switch stacks to new and pop previously-saved registers.
 
 .globl swtch
-swtch:
+swtch: 
   movl 4(%esp), %eax
   movl 8(%esp), %edx
 
