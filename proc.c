@@ -6,14 +6,28 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "realtime_queue.h"
 
-struct
+struct 
 {
   struct spinlock lock;
   struct proc proc[NPROC];
+  struct realtime_queue *realtime;
 } ptable;
 
 static struct proc *initproc;
+
+struct proc *  get_next_proc(void)
+{
+
+  ptable.realtime->list = createListProc();
+  if (ptable.realtime->list->size != 0)
+  {
+    return 0;
+    // return nextProcRealTime(ptable.realtime);
+  }
+  return 0;
+}
 
 int nextpid = 1;
 extern void forkret(void);
@@ -376,6 +390,30 @@ void scheduler(void)
   }
 }
 
+int change_prio(int priority)
+{
+  struct proc *p = myproc();
+  enum procpriority *prio = &p->priority;
+
+  switch (priority)
+  {
+  case 1:
+    *prio = LOW;
+    break;
+  case 2:
+    *prio = MEDIUM;
+    break;
+  case 3:
+    *prio = HIGH;
+    break;
+  case 4:
+    *prio = REALTIME;
+    break;
+  default:
+    return -1;
+  }
+  return 0;
+}
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -551,29 +589,4 @@ void procdump(void)
     }
     cprintf("\n");
   }
-}
-
-int change_prio(int priority)
-{
-  struct proc *p = myproc();
-  enum procpriority *prio = &p->priority;
-
-  switch (priority)
-  {
-  case 1:
-    *prio = LOW;
-    break;
-  case 2:
-    *prio = MEDIUM;
-    break;
-  case 3:
-    *prio = HIGH;
-    break;
-  case 4:
-    *prio = REALTIME;
-    break;
-  default:
-    return -1;
-  }
-  return 0;
 }

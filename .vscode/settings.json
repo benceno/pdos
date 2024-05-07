@@ -3,6 +3,12 @@
     "spinlock.h": "c",
     "mmu.h": "c",
     "proc.h": "c",
-    "user.h": "c"
+    "user.h": "c",
+    "realtime_queue.h": "c",
+    "list.h": "c",
+    "stdlib.h": "c",
+    "types.h": "c",
+    "high_queue.h": "c",
+    "low_queue.h": "c"
   }
 }

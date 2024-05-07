@@ -1,29 +1,21 @@
+#ifndef LISTPROC_H
+#define LISTPROC_H
 
-/*
- * Shortest Job First
- */
-struct
-{
-    struct listproc *process;
 
-} LOW_QUEUE;
-
-/*
- * First-Come, First-Served
- */
-struct
-{
-  struct listproc *process;
-
-} REALTIME_QUEUE;
-
-struct listproc
+typedef struct listproc
 {
     struct procnode *head;
     struct procnode *tail;
     int size;
-};
-struct procnode{
+} listproc;
+
+typedef struct procnode
+{
     struct proc *proc;
     struct procnode *next;
-};
+} procnode;
+
+listproc *createListProc();
+void insertProc(listproc *list, struct proc *proc);
+void removeProc(listproc *list, struct proc *proc);
+#endif
