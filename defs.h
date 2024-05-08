@@ -120,6 +120,12 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             getnice(int);
+int             setnice(int,int);
+void            ps(int);
+int             calculatesum(void*);
+int             findrunnable(void*);
+int             getweight(int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -18,7 +18,7 @@ void
 tvinit(void)
 {
   int i;
-
+  
   for(i = 0; i < 256; i++)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
   SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
@@ -50,7 +50,15 @@ trap(struct trapframe *tf)
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
       acquire(&tickslock);
-      ticks++;
+      ticks += 1000;                // changed to millitick
+      
+      /* Updating runtime for each timer-interrupt */
+      if (myproc() && myproc()->state == RUNNING) {
+        // moved to if case below
+        //  if(myproc()->pid==3)
+        //   cprintf("\n%d\n",myproc()->runtime);
+      }
+
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -103,8 +111,29 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
+     tf->trapno == T_IRQ0+IRQ_TIMER){
+     myproc()->ptick += 1000;
+     myproc()->runtime += 1000;
+
+     int tsum_runnable = findrunnable(&ticks);
+     
+     if(tsum_runnable==0){
+      myproc()->timeslice = 10 * 1000 * 0; // Divide-by-Zero 발생?
+     } else{
+      // timeslice 문제 (1000을 곱하냐 마냐)
+      myproc()->timeslice = 10 * 1000 * ((float)getweight(myproc()->nice)/(float)tsum_runnable); // Divide-by-Zero 발생?
+     }
+     //cprintf("tsum_runnable: %d, timeslice: %d, pticks: %d\n",(int)tsum_runnable,myproc()->timeslice,myproc()->ptick);
+
+     myproc()->vruntime += 1000 * ((float)getweight(20) / (float)getweight(myproc()->nice));
+
+
+     if(myproc()->ptick >= myproc()->timeslice){
+      // cprintf("**********************");
+      yield();
+     }
+
+    }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)

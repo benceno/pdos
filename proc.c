@@ -18,7 +18,89 @@ int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
+// Bring ticks
+extern uint ticks;
+
 static void wakeup1(void *chan);
+
+// Defined Hard Coded Array of Weights
+int weights[40] ={
+/*  0*/  88761, 71755, 56483, 46273, 36291,
+/*  5*/  29154, 23254, 18705, 14949, 11916,
+/* 10*/   9548,  7620,  6100,  4904,  3906,
+/* 15*/   3121,  2501,  1991,  1586,  1277,
+/* 20*/   1024,   820,   655,   526,   423,
+/* 25*/    335,   272,   215,   172,   137,
+/* 30*/    110,    87,    70,    56,    45,
+/* 35*/     36,    29,    23,    18,    15,
+};
+
+/* Add Data structure for Priority Queue */
+// struct node {
+//   int data;
+//   int priority;   // nice-value for this
+// }
+
+/* Defining Priority Queue for schedueling */
+
+struct pqueue {
+  struct proc *procs[NPROC]; 
+  int size;                  
+};
+
+struct pqueue runnableQueue; 
+
+// Initializing Heap
+void initPQueue(struct pqueue *pq) {
+  pq->size = 0;
+}
+
+// Inserting into Heap
+void pushPQueue(struct pqueue *pq, struct proc *p) {
+  if (pq->size == NPROC) {
+    // error-handling..?
+    return;
+  }
+  int i = pq->size++;
+  while (i > 0 && pq->procs[(i-1)/2]->vruntime > p->vruntime) {
+    pq->procs[i] = pq->procs[(i-1)/2];
+    i = (i-1)/2;
+  }
+  pq->procs[i] = p;
+}
+
+// Pop out smallese vruntime
+struct proc* popPQueue(struct pqueue *pq) {
+  if (pq->size == 0) {
+    return 0;
+  }
+  struct proc* min = pq->procs[0];
+  struct proc* last = pq->procs[--pq->size];
+  int i = 0;
+  while (i*2 + 1 < pq->size) {
+    int left = i*2 + 1, right = i*2 + 2;
+    int j = left;
+    if (right < pq->size && 
+          pq->procs[right]->vruntime < pq->procs[left]->vruntime) {
+      j = right;
+    }
+    if (pq->procs[j]->vruntime >= last->vruntime) break;
+    pq->procs[i] = pq->procs[j];
+    i = j;
+  }
+  pq->procs[i] = last;
+  return min;
+}
+
+// Returnin min value
+struct proc* peekPQueue(struct pqueue *pq) {
+    if (pq->size == 0) {
+        return 0; // Return NULL if the queue is empty
+    }
+    return pq->procs[0]; // Return the minimum element (the root of the heap)
+}
+
+/* Defining Priority Queue for schedueling */
 
 void
 pinit(void)
@@ -88,6 +170,11 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->nice = 20;             // Set default nice Value to 20.
+  p->weight = weights[20];  // Set the default weight inorder to nice value 20.
+  p->runtime = 0;           // Initializing runtime
+  p->vruntime = 0;          // Initializing virtual runtime
+  // p->ptick = 0;          // Initializing virtual runtime
 
   release(&ptable.lock);
 
@@ -199,6 +286,11 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
+  // Copy process rutime,vruntime and nice value from proc.
+  np->nice      = curproc->nice;
+  np->runtime   = curproc->runtime;
+  np->vruntime  = curproc->vruntime;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -326,32 +418,55 @@ scheduler(void)
   struct cpu *c = mycpu();
   c->proc = 0;
   
+
+
   for(;;){
+    int tsum_runnable = 0;
     // Enable interrupts on this processor.
     sti();
 
+    // int r_count=0;  // variable for counting whether scheduling is needed.
+
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    initPQueue(&runnableQueue);
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+    /* Changed for-loop for CFS */
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->state == RUNNABLE) {
+        pushPQueue(&runnableQueue, p);
+        tsum_runnable += weights[p->nice];
+      }
+    }
+    p = popPQueue(&runnableQueue);
+    if (p) {
+
+      // debug code
+      // cprintf("%d\n",p->pid);
+
+      // p->ptick += 1000;
+      // /* ADD RUNTIME INCREASE */
+      // p->runtime += 1000;
+      
+      // // int tsum_runnable = findrunnable(&ticks);
+      
+      // if(tsum_runnable==0){
+      //   p->timeslice = 10 * 1000 * 1; // Divide-by-Zero 발생?
+      // } else{
+      //   // timeslice 문제 (1000을 곱하냐 마냐)
+      //   p->timeslice = 10 * 1000 * ((float)getweight(p->nice)/(float)tsum_runnable); // Divide-by-Zero 발생?
+      // }
+
+      // p->vruntime += 1000 * ((float)getweight(20) / (float)getweight(p->nice));
+
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -387,6 +502,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  myproc()->ptick = 0;    // setting running tick to 0
   sched();
   release(&ptable.lock);
 }
@@ -458,10 +574,33 @@ static void
 wakeup1(void *chan)
 {
   struct proc *p;
+  struct proc *sp;
+  struct pqueue tempQueue;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+  initPQueue(&tempQueue);
+
+  for(sp = ptable.proc; sp < &ptable.proc[NPROC]; sp++) {
+    if (sp->state == RUNNABLE) {
+      pushPQueue(&tempQueue, sp);
+    }
+  }
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state == SLEEPING && p->chan == chan) {
+      sp = peekPQueue(&tempQueue);
+      if(sp) {
+        // p->runtime=0;
+        p->ptick=0;
+        p->vruntime = sp->vruntime - (1 * 1000 * (weights[20] / weights[p->nice]));
+      } else {
+        // p->runtime=0;
+        p->ptick=0;
+        p->vruntime = 0;
+      }
       p->state = RUNNABLE;
+    }
+  }
+
 }
 
 // Wake up all processes sleeping on chan.
@@ -532,3 +671,122 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int
+getnice(int pid)
+{
+  struct proc *p;
+  int p_nice;
+
+  // copied skeleton from kill()
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid && pid>0){
+      // Get nice value from PCB
+      p_nice = p->nice;
+      release(&ptable.lock);
+      return p_nice;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
+
+}
+
+int
+setnice(int pid,int p_nice)
+{
+  struct proc *p;
+
+  // copied skeleton from kill()
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid && pid>0){
+      // Set nice value to PCB
+      p->nice = p_nice;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
+
+}
+
+void
+ps(int pid)
+{
+  // copied skeleton from procdump()
+  static char *states[] = {
+  [UNUSED]    "UNUSED",
+  [EMBRYO]    "EMBRYO",
+  [SLEEPING]  "SLEEPING",
+  [RUNNABLE]  "RUNNABLE",
+  [RUNNING]   "RUNNING",
+  [ZOMBIE]    "ZOMBIE"
+  };
+  // int i;
+  struct proc *p;
+  char *state;
+  // uint pc[10];
+
+  acquire(&ptable.lock);
+  if(pid==0){
+    //cprintf("name \t pid \t state \t priority \t runtime/weight \t runtime \t vruntime \t  \t tick %u\n",ticks);
+    cprintf("name       pid     state     priority  runtime/weight  runtime  vruntime  tick %d\n",(int)ticks);
+  }
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    if(pid != 0 && p->pid != pid){
+      continue;
+    } else if(pid != 0 && p->pid == pid){
+      // cprintf("name \t pid \t state \t priority \t runtime/weight \t runtime \t vruntime\n");
+      cprintf("name       pid     state     priority  runtime/weight  runtime  vruntime  tick %d\n",(int)ticks);
+    }
+
+    if(p->state >= 0 && p->state < NELEM(states) && states[p->state]) {
+      state = states[p->state];
+    } else {
+      state = "???";
+    }
+    cprintf("%s \t %d \t %s \t %d \t \t %d \t %d \t %d\n",
+         p->name, p->pid, state, p->nice,(int)(p->runtime/weights[p->nice]), p->runtime, p->vruntime);
+  }
+  release(&ptable.lock);
+
+}
+
+// calculate weight sum of runnable
+int
+calculatesum(void *chan)
+{
+  struct proc *p;
+  int sum=0;
+  
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == RUNNABLE /*&& p->chan == chan*/) // 여기 주석처리 했었음.
+      sum += weights[p->nice];
+  }
+  
+  return sum;
+}
+
+// find runnable
+int
+findrunnable(void *chan)
+{
+  int total_weight = 0;
+  
+  acquire(&ptable.lock);
+  total_weight = calculatesum(chan);
+  release(&ptable.lock);
+
+  return total_weight;
+}
+
+// return weight from hard-code array
+int getweight(int nice){
+  return weights[nice];
+}
+

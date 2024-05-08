@@ -89,3 +89,84 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_getnice(void)
+{
+  int pid;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+  return getnice(pid);
+}
+
+int
+sys_setnice(void)
+{
+  int pid, nice;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &nice) < 0)
+    return -1;
+
+  // should i consider floating point error?
+  if(nice<0 || nice>39)
+    return -1;
+
+  return setnice(pid,nice);
+}
+
+int
+sys_ps(void)
+{
+  int pid;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+  
+  ps(pid);
+  return 0;
+}
+
+int
+sys_mmap(void)
+{
+  uint addr;
+  int length, prot, flags, fd, offset;
+
+  if(argint(0, &addr) < 0 || argint(1, &length) < 0 || argint(2, &prot) < 0 ||
+     argint(3, &flags) < 0 || argint(4, &fd) < 0 || argint(5, &offset) < 0)
+  {
+    return 0; // If fail return 0
+  }
+
+  // mmap(addr,length,prot,flags,fd,offset);
+  return mmap(addr,length,prot,flags,fd,offset);  // It should also return 0 in the actual function
+
+}
+
+int
+sys_munmap(void)
+{
+  uint addr;
+
+  if(argint(0, &addr)<0)
+    return -1;
+
+  return munmap(addr); // It should also reutnr -1 in the actual function
+
+}
+
+int
+sys_freemem(void)
+{
+  // uint addr;
+  // if(argint(0, &addr)<0)
+  //   return -1;
+
+  freemem();
+  return 0;
+
+}
+

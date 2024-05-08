@@ -49,6 +49,14 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int nice;                    // Added a priority nice Value 
+  uint weight;                 // 1024 / (1.25)^(nice-20) <- Hard-Coded Array Q: But if i have hard-coded array for weights do i need this value? -> Not a global array
+  uint runtime;                // Actual runtime calculated in XV6
+  uint vruntime;               // Virtual runtime calculated in XV6
+  uint ptick;                  // Process tick
+  uint timeslice;              // (tick) * weight_of_current_p / total_weight
+
+
 };
 
 // Process memory is laid out contiguously, low addresses first:
