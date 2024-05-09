@@ -8,20 +8,55 @@
 #include "spinlock.h"
 #include "realtime_queue.h"
 
-struct 
+struct
 {
   struct spinlock lock;
   struct proc proc[NPROC];
-  struct realtime_queue *realtime;
+  struct realtime_queue realtime;
 } ptable;
 
 static struct proc *initproc;
 
-struct proc *  get_next_proc(void)
+struct proc *nextProcRealTime(realtime_queue queue)
 {
+  struct listproc list = queue.list;
+  if (list.size == 0)
+  {
+    cprintf("My size is null\n");
+    return 0;
+  }
+  if (queue.current->state == RUNNING)
+  {
+    cprintf("I chose current\n");
+    return queue.current;
+  }
+  cprintf("I chone next process\n");
 
-  ptable.realtime->list = createListProc();
-  if (ptable.realtime->list->size != 0)
+  struct procnode *aux = list.head;
+  struct proc *proc = aux->proc;
+  removeProc(&list, proc);
+  queue.current = proc;
+  return proc;
+}
+struct proc *get_next_proc(void)
+{
+  listproc high = createListProc();
+  listproc medium = createListProc();
+  listproc low = createListProc();
+
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->priority ==REALTIME && p->state == RUNNABLE){
+      return p;
+    }
+    // insertProc(&realtime, p);
+    
+    if (p->state == RUNNABLE)
+    {
+      return p;
+    }
+  }
+  if (ptable.realtime.list.size != 0)
   {
     return 0;
     // return nextProcRealTime(ptable.realtime);
@@ -106,7 +141,6 @@ found:
   p->pid = nextpid++;
 
   release(&ptable.lock);
-
   // Allocate kernel stack.
   if ((p->kstack = kalloc()) == 0)
   {
@@ -128,7 +162,6 @@ found:
   p->context = (struct context *)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
   return p;
 }
 
@@ -206,6 +239,7 @@ int fork(void)
   {
     return -1;
   }
+  insertProc(&ptable.realtime.list, np);
   // Copy process state from proc.
   if ((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0)
   {
@@ -341,20 +375,16 @@ int wait(void)
  */
 void premptProcess(struct cpu *c)
 {
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  struct proc *p = get_next_proc();
+  if (p)
   {
-    if (p->state != RUNNABLE)
-      continue;
-
-    // Switch to chosen process.  It is the process's job
-    // to release ptable.lock and then reacquire it
-    // before jumping back to us.
     c->proc = p;
     switchuvm(p);
     p->state = RUNNING;
 
     swtch(&(c->scheduler), p->context);
     switchkvm();
+    return;
   }
 }
 // PAGEBREAK: 42
@@ -367,6 +397,12 @@ void premptProcess(struct cpu *c)
 //       via swtch back to the scheduler.
 void scheduler(void)
 {
+  listproc list;
+  list.head = 0;
+  list.size = 0;
+  list.tail = 0;
+  ptable.realtime.list = list;
+
   struct cpu *c = mycpu();
   c->proc = 0;
   int prempt = 0;

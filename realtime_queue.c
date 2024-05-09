@@ -1,21 +1,14 @@
 #include "realtime_queue.h"
-#include "proc.h"
 
-struct proc *nextProcRealTime(realtime_queue *queue)
-{
-    listproc *list = queue->list;
-    if (list->size == 0)
-    {
-        return 0;
-    }
-    if (queue->current->state == RUNNING)
-    {
-        return queue->current;
-    }
+struct realtime_queue createRealTimeQueue(){
+    struct listproc list;
+    list.head = 0;
+    list.tail = 0;
+    list.size = 0;
 
-    procnode *aux = list->head;
-    struct proc *proc = aux->proc;
-    removeProc(list, proc);
-    queue->current = proc;
-    return proc;
+    struct realtime_queue queue;
+    queue.list = list;
+
+    return queue;
 }
+

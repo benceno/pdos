@@ -95,8 +95,7 @@ struct avl_node *insertRec(avl_node *current, avl_node *new)
 void insertProcHigh(high_queue *queue, struct proc *proc)
 {
     avl_tree *tree = queue->tree;
-    avl_node *node = 0;
-    // = (avl_node *)malloc(sizeof(avl_node));
+    avl_node *node = (avl_node *)malloc(sizeof(avl_node));
     node->proc = proc;
     node->left = 0;
     node->right = 0;

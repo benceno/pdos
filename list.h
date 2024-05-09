@@ -1,7 +1,3 @@
-#ifndef LISTPROC_H
-#define LISTPROC_H
-
-
 typedef struct listproc
 {
     struct procnode *head;
@@ -15,7 +11,6 @@ typedef struct procnode
     struct procnode *next;
 } procnode;
 
-listproc *createListProc();
-void insertProc(listproc *list, struct proc *proc);
-void removeProc(listproc *list, struct proc *proc);
-#endif
+struct listproc createListProc();
+void insertProc(struct listproc *list, struct proc *proc);
+void removeProc(struct listproc *list, struct proc *proc);

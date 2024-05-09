@@ -28,9 +28,9 @@ OBJS = \
 	vectors.o\
 	vm.o\
 	list.o\
+	realtime_queue.o\
 	# low_queue.o\
 	# high_queue.o\
-	# realtime_queue.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf

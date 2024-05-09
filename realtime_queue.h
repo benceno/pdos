@@ -7,12 +7,10 @@
  */
 typedef struct realtime_queue
 {
-    struct proc *current;
-    struct listproc *list;
+    struct proc * current;
+    listproc list;
 
 } realtime_queue;
 
-
-struct proc *nextProcRealTime(realtime_queue *queue);
 
 #endif

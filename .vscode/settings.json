@@ -9,6 +9,16 @@
     "stdlib.h": "c",
     "types.h": "c",
     "high_queue.h": "c",
-    "low_queue.h": "c"
+    "low_queue.h": "c",
+    "fcntl.h": "c",
+    "list": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c",
+    "medium_queue.h": "c",
+    "defs.h": "c",
+    "memlayout.h": "c",
+    "x86.h": "c"
   }
 }
