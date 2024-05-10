@@ -38,6 +38,7 @@ struct proc *nextProcRealTime(realtime_queue queue)
   queue.current = proc;
   return proc;
 }
+
 struct proc *get_next_proc(void)
 {
   listproc high = createListProc();
@@ -46,21 +47,47 @@ struct proc *get_next_proc(void)
 
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if(p->priority ==REALTIME && p->state == RUNNABLE){
+    if(p->priority == REALTIME && p->state == RUNNABLE){
       return p;
     }
     // insertProc(&realtime, p);
     
     if (p->state == RUNNABLE)
     {
-      return p;
+      switch (p->priority)
+      {
+        case HIGH:
+          insertProc(&high, p);
+          break;
+
+        case MEDIUM:
+          insertProc(&medium, p);
+          break;
+
+        case LOW:
+          insertProc(&low, p);
+          break;
+        
+        default:
+          break;
+      }
+      // return p;
     }
   }
-  if (ptable.realtime.list.size != 0)
+
+  if (high.size != 0)
   {
-    return 0;
-    // return nextProcRealTime(ptable.realtime);
+    return nextProcHigh(high);
+  } 
+  else if (medium.size != 0)
+  {
+    return nextProcMedium(medium);
   }
+  else if (low.size != 0)
+  {
+    return nextProcLow(low);
+  }
+  
   return 0;
 }
 
