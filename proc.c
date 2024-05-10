@@ -344,25 +344,6 @@ struct proc *fcfs_high_priority(listproc realtime_list)
   }
   return oldest_proc;
 }
-/**
- * Lowest time running, based on CFS, giving more processor time to the process with the lowest time_running
- * @param low_list list of realtime processes
- * @return struct proc* the process with the lowest time_running
- */
-struct proc *lowest_time_running_low_priority(listproc low_list)
-{
-  struct procnode *current = low_list.head;
-  struct proc *io_bound_process = current->proc;
-  while (current->next)
-  {
-    current = current->next;
-    if (io_bound_process->time_running < current->proc->time_running)
-    {
-      io_bound_process = current->proc;
-    }
-  }
-  return io_bound_process;
-}
 // Round robin
 struct proc *round_robin_high_priority(listproc high_process_list)
 {
@@ -377,6 +358,44 @@ struct proc *round_robin_high_priority(listproc high_process_list)
     }
   }
   return last_time_run;
+}
+/**
+ * Lowest time running, based on CFS, giving more processor time to the process with the lowest time_running
+ * @param medium_list list of realtime processes
+ * @return struct proc* the process with the lowest time_running
+ */
+struct proc *<lowest_time_running>_medium_priority(listproc medium_list)
+{
+  struct procnode *current = medium_list.head;
+  struct proc *io_bound_process = current->proc;
+  while (current->next)
+  {
+    current = current->next;
+    if (io_bound_process->time_running < current->proc->time_running)
+    {
+      io_bound_process = current->proc;
+    }
+  }
+  return io_bound_process;
+}
+/**
+ * Lowest time running, based on CFS, giving more processor time to the process with the lowest time_running
+ * @param low_list list of realtime processes
+ * @return struct proc* the process with the lowest time_running
+ */
+struct proc *lowest_time_running_low_priority(listproc low_list)
+{
+  struct procnode *current = low_list.head;
+  struct proc *io_bound_process = current->proc;
+  while (current->next)
+  {
+    current = current->next;
+    if (io_bound_process->time_running > current->proc->time_running)
+    {
+      io_bound_process = current->proc;
+    }
+  }
+  return io_bound_process;
 }
 struct proc *get_next_proc(void)
 {
@@ -418,10 +437,11 @@ struct proc *get_next_proc(void)
   {
     return round_robin_high_priority(high);
   }
-  // else if (medium.size != 0)
-  // {
-  //   return nextProcMedium(medium);
-  // }
+  else if (medium.size != 0)
+  {
+    // return nextProcMedium(medium);
+    return round_robin_high_priority(medium);
+  }
   else if (low.size != 0)
   {
     return lowest_time_running_low_priority(low);
