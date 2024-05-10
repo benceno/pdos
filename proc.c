@@ -360,18 +360,18 @@ struct proc *round_robin_high_priority(listproc high_process_list)
   return last_time_run;
 }
 /**
- * Lowest time running, based on CFS, giving more processor time to the process with the lowest time_running
+ * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
  * @param medium_list list of realtime processes
- * @return struct proc* the process with the lowest time_running
+ * @return struct proc* the process with the greatest time_running/times_chosen
  */
-struct proc *<lowest_time_running>_medium_priority(listproc medium_list)
+struct proc *greatest_time_usage_medium_priority(listproc medium_list)
 {
   struct procnode *current = medium_list.head;
   struct proc *io_bound_process = current->proc;
   while (current->next)
   {
     current = current->next;
-    if (io_bound_process->time_running < current->proc->time_running)
+    if (io_bound_process->time_running/io_bound_process->times_chosen > current->proc->time_running/current->proc->times_chosen)
     {
       io_bound_process = current->proc;
     }
@@ -439,8 +439,7 @@ struct proc *get_next_proc(void)
   }
   else if (medium.size != 0)
   {
-    // return nextProcMedium(medium);
-    return round_robin_high_priority(medium);
+    return greatest_time_usage_medium_priority(medium);
   }
   else if (low.size != 0)
   {
