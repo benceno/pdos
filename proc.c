@@ -347,7 +347,19 @@ int wait(void)
     sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
 }
+// O(n) para cada processo na lista
+struct proc * nextProcLow(listproc low_process_list){
+  struct procnode *current = low_process_list.head;
+  struct proc * lowest_ticks_proc = current->proc;
+  while(current->next){
+    current = current->next;
+    if(lowest_ticks_proc->ticks<current->proc->ticks){
+      lowest_ticks_proc = current->proc;
+    }
+  }
+  return lowest_ticks_proc;
 
+}
 struct proc *get_next_proc(void)
 {
   listproc high = createListProc();
