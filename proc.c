@@ -6,39 +6,15 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "realtime_queue.h"
+#include "list.h"
 
 struct
 {
   struct spinlock lock;
   struct proc proc[NPROC];
-  struct realtime_queue realtime;
 } ptable;
 
 static struct proc *initproc;
-
-struct proc *nextProcRealTime(realtime_queue queue)
-{
-  struct listproc list = queue.list;
-  if (list.size == 0)
-  {
-    cprintf("My size is null\n");
-    return 0;
-  }
-  if (queue.current->state == RUNNING)
-  {
-    cprintf("I chose current\n");
-    return queue.current;
-  }
-  cprintf("I chone next process\n");
-
-  struct procnode *aux = list.head;
-  struct proc *proc = aux->proc;
-  removeProc(&list, proc);
-  queue.current = proc;
-  return proc;
-}
-
 
 
 int nextpid = 1;
@@ -116,7 +92,11 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+  p->last_time_run = 0;
+  p->time_running = 0;
+  p->times_chosen = 0;
+  p->create_time = ticks;
+  p->retime = 0;
   release(&ptable.lock);
   // Allocate kernel stack.
   if ((p->kstack = kalloc()) == 0)
@@ -216,7 +196,6 @@ int fork(void)
   {
     return -1;
   }
-  insertProc(&ptable.realtime.list, np);
   // Copy process state from proc.
   if ((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0)
   {
@@ -225,7 +204,6 @@ int fork(void)
     np->state = UNUSED;
     return -1;
   }
-  np->ticks = 0;
   np->priority = MEDIUM;
   np->sz = curproc->sz;
   np->parent = curproc;
@@ -347,37 +325,75 @@ int wait(void)
     sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
 }
-// O(n) para cada processo na lista
-struct proc * nextProcLow(listproc low_process_list){
-  struct procnode *current = low_process_list.head;
-  struct proc * lowest_ticks_proc = current->proc;
-  while(current->next){
+/**
+ * First Come First Served
+ * @param realtime_list list of realtime processes
+ * @return struct proc* the oldest process
+ */
+struct proc *fcfs_high_priority(listproc realtime_list)
+{
+  struct procnode *current = realtime_list.head;
+  struct proc *oldest_proc = current->proc;
+  while (current->next)
+  {
     current = current->next;
-    if(lowest_ticks_proc->ticks<current->proc->ticks){
-      lowest_ticks_proc = current->proc;
+    if (oldest_proc->create_time > current->proc->create_time)
+    {
+      oldest_proc = current->proc;
     }
   }
-  return lowest_ticks_proc;
-
+  return oldest_proc;
+}
+/**
+ * Lowest time running, based on CFS, giving more processor time to the process with the lowest time_running
+ * @param low_list list of realtime processes
+ * @return struct proc* the process with the lowest time_running
+ */
+struct proc *lowest_time_running_low_priority(listproc low_list)
+{
+  struct procnode *current = low_list.head;
+  struct proc *io_bound_process = current->proc;
+  while (current->next)
+  {
+    current = current->next;
+    if (io_bound_process->time_running < current->proc->time_running)
+    {
+      io_bound_process = current->proc;
+    }
+  }
+  return io_bound_process;
+}
+// Round robin
+struct proc *round_robin_high_priority(listproc high_process_list)
+{
+  struct procnode *current = high_process_list.head;
+  struct proc *last_time_run = current->proc;
+  while (current->next)
+  {
+    current = current->next;
+    if (last_time_run->last_time_run < current->proc->last_time_run)
+    {
+      last_time_run = current->proc;
+    }
+  }
+  return last_time_run;
 }
 struct proc *get_next_proc(void)
 {
+  listproc realtime = createListProc();
   listproc high = createListProc();
   listproc medium = createListProc();
   listproc low = createListProc();
 
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    if (p->priority == REALTIME && p->state == RUNNABLE)
-    {
-      return p;
-    }
-    // insertProc(&realtime, p);
-
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (p->state == RUNNABLE)
     {
+      p->retime++;
       switch (p->priority)
       {
+      case REALTIME:
+        insertProc(&realtime, p);
+        break;
       case HIGH:
         insertProc(&high, p);
         break;
@@ -395,18 +411,20 @@ struct proc *get_next_proc(void)
       }
     }
   }
-
+  if(realtime.size!=0){
+    return fcfs_high_priority(realtime);
+  }
   if (high.size != 0)
   {
-    return nextProcHigh(high);
+    return round_robin_high_priority(high);
   }
-  else if (medium.size != 0)
-  {
-    return nextProcMedium(medium);
-  }
+  // else if (medium.size != 0)
+  // {
+  //   return nextProcMedium(medium);
+  // }
   else if (low.size != 0)
   {
-    return nextProcLow(low);
+    return lowest_time_running_low_priority(low);
   }
 
   return 0;
@@ -416,13 +434,16 @@ struct proc *get_next_proc(void)
  */
 void premptProcess(struct cpu *c)
 {
-  if(c->proc && c->proc->priority == REALTIME){
-    if(c->proc->state == RUNNING|| c->proc->state == RUNNABLE)
-    return;
+  if (c->proc && c->proc->priority == REALTIME)
+  {
+    if (c->proc->state == RUNNING)
+      return;
   }
   struct proc *p = get_next_proc();
-  if (p)
-  {
+  if (p){
+    if(c->proc && c->proc->pid != p->pid){
+      c->proc->times_chosen++;
+    }
     c->proc = p;
     switchuvm(p);
     p->state = RUNNING;
@@ -442,11 +463,6 @@ void premptProcess(struct cpu *c)
 //       via swtch back to the scheduler.
 void scheduler(void)
 {
-  listproc list;
-  list.head = 0;
-  list.size = 0;
-  list.tail = 0;
-  ptable.realtime.list = list;
 
   struct cpu *c = mycpu();
   c->proc = 0;
@@ -457,9 +473,9 @@ void scheduler(void)
     sti();
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    if (c->proc != 0)
+    if (c->proc != 0 && c->proc->state == RUNNING)
     {
-      c->proc->ticks++;
+      c->proc->time_running++;
     }
 
     if (prempt == INTERV)

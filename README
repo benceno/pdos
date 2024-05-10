@@ -2,7 +2,7 @@
 
 ## Authors:
 
-Marcos de Paula:
+Marcos de Paulo:
 João Vítor Santana Depollo: https://github.com/@JoaoVitorSD
 
 ### 1. Introdução
@@ -12,6 +12,10 @@ O objetivo deste trabalho é implementar alterações na política de escaloname
 
 ## Prioridade
 
+### Realtime
 
-### 2.1. Estrutura de Dados
-### 2.2 Função change_priority
+### High
+
+### Medium
+
+### Low

@@ -32,7 +32,6 @@ void insertProc(struct listproc *list, struct proc *proc)
         *list->tail = node;
     }
     list->size++;
-    cprintf("insert in list proc%d\n", list->size);
 }
 
 void removeProc(struct listproc *list, struct proc *proc)

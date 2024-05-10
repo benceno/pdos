@@ -53,7 +53,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int ticks;                   // Number of ticks the process has run for
+  int create_time;             // Tick that process has been created;
+  int time_running;            // Number of ticks the process has run for
+  int last_time_run;           // Last tick time that process has runned in cpu
+  int times_chosen;            // Number of times the process has been chosen to run
+  int retime;                  // Tempo READY(RUNNABLE) time
 };
 
 // Process memory is laid out contiguously, low addresses first:
