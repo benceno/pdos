@@ -39,57 +39,7 @@ struct proc *nextProcRealTime(realtime_queue queue)
   return proc;
 }
 
-struct proc *get_next_proc(void)
-{
-  listproc high = createListProc();
-  listproc medium = createListProc();
-  listproc low = createListProc();
 
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    if(p->priority == REALTIME && p->state == RUNNABLE){
-      return p;
-    }
-    // insertProc(&realtime, p);
-    
-    if (p->state == RUNNABLE)
-    {
-      switch (p->priority)
-      {
-        case HIGH:
-          insertProc(&high, p);
-          break;
-
-        case MEDIUM:
-          insertProc(&medium, p);
-          break;
-
-        case LOW:
-          insertProc(&low, p);
-          break;
-        
-        default:
-          break;
-      }
-      // return p;
-    }
-  }
-
-  if (high.size != 0)
-  {
-    return nextProcHigh(high);
-  } 
-  else if (medium.size != 0)
-  {
-    return nextProcMedium(medium);
-  }
-  else if (low.size != 0)
-  {
-    return nextProcLow(low);
-  }
-  
-  return 0;
-}
 
 int nextpid = 1;
 extern void forkret(void);
@@ -397,11 +347,67 @@ int wait(void)
     sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
 }
+
+struct proc *get_next_proc(void)
+{
+  listproc high = createListProc();
+  listproc medium = createListProc();
+  listproc low = createListProc();
+
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->priority == REALTIME && p->state == RUNNABLE)
+    {
+      return p;
+    }
+    // insertProc(&realtime, p);
+
+    if (p->state == RUNNABLE)
+    {
+      switch (p->priority)
+      {
+      case HIGH:
+        insertProc(&high, p);
+        break;
+
+      case MEDIUM:
+        insertProc(&medium, p);
+        break;
+
+      case LOW:
+        insertProc(&low, p);
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  if (high.size != 0)
+  {
+    return nextProcHigh(high);
+  }
+  else if (medium.size != 0)
+  {
+    return nextProcMedium(medium);
+  }
+  else if (low.size != 0)
+  {
+    return nextProcLow(low);
+  }
+
+  return 0;
+}
 /**
  * Switch to the next process in the queue that is runnable
  */
 void premptProcess(struct cpu *c)
 {
+  if(c->proc && c->proc->priority == REALTIME){
+    if(c->proc->state == RUNNING|| c->proc->state == RUNNABLE)
+    return;
+  }
   struct proc *p = get_next_proc();
   if (p)
   {
