@@ -7,12 +7,16 @@ João Vítor Santana Depollo: https://github.com/@JoaoVitorSD
 
 ### 1. Introdução
 
-O objetivo deste trabalho é implementar alterações na política de escalonamento do sistema operacional xv6.
+O objetivo deste trabalho é implementar alterações na política de escalonamento do sistema operacional xv6. A maior parte das alterações foram feitas pelas chamadas do scheduler e na inicialização do proc, na função `allocproc()`.
 
+### Scheduller
 
-## Prioridade
+A prempção do scheduler ocorre com a implementação de um loop que por uma variável `prempt` que quando atinge o valor da variável `INTERV`, o valor da variável é zerado e a função `premptProcess()` é chamada, aplicando diferentes políticas de escalonamento, de acordo com a prioridade, para escolher o próximo processo a ser executado.
+## Prioridades
+
 
 ### Realtime
+Utiliza o FCFS (First Come, First Served), utilizando o valor `create_time` do processo para saber qual o processo com o menor create_time do array de processos.
 
 ### High
 
