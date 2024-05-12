@@ -11,6 +11,7 @@ typedef struct procnode
     struct procnode *next;
 } procnode;
 
-struct listproc createListProc();
+struct listproc* createListProc();
+void destroyListProc(struct listproc *list);
 void insertProc(struct listproc *list, struct proc *proc);
 void removeProc(struct listproc *list, struct proc *proc);

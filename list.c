@@ -7,29 +7,41 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-struct listproc createListProc()
+struct listproc * createListProc()
 {
-    struct listproc list;
-    list.head = 0;
-    list.tail = 0;
-    list.size = 0;
+    struct listproc *list = (struct listproc *)kalloc();
+    list->head = 0;
+    list->tail = 0;
+    list->size = 0;
     return list;
 }
-
+void destroyListProc(struct listproc *list)
+{
+    struct procnode *aux = list->head;
+    struct procnode *auxNext;
+    for (int i = 0; i < list->size; i++)
+    {
+        auxNext = aux->next;
+        kfree((char *)aux);
+        aux = auxNext;
+    }
+    kfree((char *)list);
+}
 void insertProc(struct listproc *list, struct proc *proc)
 {
-    procnode node;
-    node.proc = proc;
-    node.next = 0;
+    procnode * node = (procnode *)kalloc();
+    node->proc = proc;
+    node->next = 0;
     if (list->size == 0)
     {
-        *list->head = node;
-        *list->tail = node;
+        list->head = node;
+        list->tail = node;
+        
     }
     else
     {
-        *list->tail->next = node;
-        *list->tail = node;
+        list->tail->next = node;
+        list->tail = node;
     }
     list->size++;
 }

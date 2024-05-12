@@ -16,7 +16,6 @@ struct
 
 static struct proc *initproc;
 
-
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
@@ -92,9 +91,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->last_time_run = 0;
+  p->times_picked = 0;
   p->time_running = 0;
-  p->times_chosen = 0;
+  p->priority = LOW;
   p->create_time = ticks;
   p->retime = 0;
   release(&ptable.lock);
@@ -327,130 +326,108 @@ int wait(void)
 }
 /**
  * First Come First Served
- * @param realtime_list list of realtime processes
  * @return struct proc* the oldest process
  */
-struct proc *fcfs_high_priority(listproc realtime_list)
+struct proc *fcfs_realtime_priority()
 {
-  struct procnode *current = realtime_list.head;
-  struct proc *oldest_proc = current->proc;
-  while (current->next)
+  struct proc *oldest_proc = 0;
+  int oldest_time = -1;
+  for (struct proc *p; p < &ptable.proc[NPROC]; p++)
   {
-    current = current->next;
-    if (oldest_proc->create_time > current->proc->create_time)
+    if (p->state != RUNNABLE && p->priority != REALTIME)
     {
-      oldest_proc = current->proc;
+      continue;
+    }
+    else if (oldest_time == -1 || p->create_time < oldest_time)
+    {
+      oldest_time = p->create_time;
+      oldest_proc = p;
     }
   }
   return oldest_proc;
 }
-/**
- * Lowest time running, based on CFS, giving more processor time to the process with the lowest time_running
- * @param low_list list of realtime processes
- * @return struct proc* the process with the lowest time_running
- */
-struct proc *lowest_time_running_low_priority(listproc low_list)
+// Round robin
+struct proc *round_robin_high_priority()
 {
-  struct procnode *current = low_list.head;
-  struct proc *io_bound_process = current->proc;
-  while (current->next)
+  struct proc *next_proc = 0;
+  int older_cycle = -1;
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    current = current->next;
-    if (io_bound_process->time_running < current->proc->time_running)
+    if (p->state != RUNNABLE && p->priority != HIGH)
     {
-      io_bound_process = current->proc;
+      continue;
+    }
+    if (older_cycle == -1 || p->last_cycle < older_cycle)
+    {
+      older_cycle = p->last_cycle;
+      next_proc = p;
+    }
+  }
+  return next_proc;
+}
+/**
+ * Lowest picked by scheduler, based on CFS, giving more processor time to the process with the lowest times_picked
+ * @return struct proc* the process with the lowest times_picked
+ */
+struct proc *lowest_picked_medium_priority()
+{
+  struct proc *io_bound_process = 0;
+  int times_picked = -1;
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state != RUNNABLE && p->priority != MEDIUM)
+    {
+      continue;
+    }
+    if (times_picked == -1 || times_picked >= p->times_picked)
+    {
+      times_picked = p->times_picked;
+      io_bound_process = p;
     }
   }
   return io_bound_process;
 }
-// Round robin
-struct proc *round_robin_high_priority(listproc high_process_list)
-{
-  struct procnode *current = high_process_list.head;
-  struct proc *last_time_run = current->proc;
-  while (current->next)
-  {
-    current = current->next;
-    if (last_time_run->last_time_run < current->proc->last_time_run)
-    {
-      last_time_run = current->proc;
-    }
-  }
-  return last_time_run;
-}
-struct proc *get_next_proc(void)
-{
-  listproc realtime = createListProc();
-  listproc high = createListProc();
-  listproc medium = createListProc();
-  listproc low = createListProc();
 
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if (p->state == RUNNABLE)
-    {
-      p->retime++;
-      switch (p->priority)
-      {
-      case REALTIME:
-        insertProc(&realtime, p);
-        break;
-      case HIGH:
-        insertProc(&high, p);
-        break;
-
-      case MEDIUM:
-        insertProc(&medium, p);
-        break;
-
-      case LOW:
-        insertProc(&low, p);
-        break;
-
-      default:
-        break;
-      }
-    }
-  }
-  if(realtime.size!=0){
-    return fcfs_high_priority(realtime);
-  }
-  if (high.size != 0)
-  {
-    return round_robin_high_priority(high);
-  }
-  // else if (medium.size != 0)
-  // {
-  //   return nextProcMedium(medium);
-  // }
-  else if (low.size != 0)
-  {
-    return lowest_time_running_low_priority(low);
-  }
-
-  return 0;
-}
 /**
  * Switch to the next process in the queue that is runnable
  */
-void premptProcess(struct cpu *c)
+struct proc *premptProcess(void)
 {
-  if (c->proc && c->proc->priority == REALTIME)
+  struct proc *next_proc = 0;
+  next_proc = fcfs_realtime_priority();
+  if (next_proc == 0)
   {
-    if (c->proc->state == RUNNING)
-      return;
+    next_proc = round_robin_high_priority();
   }
-  struct proc *p = get_next_proc();
-  if (p){
-    if(c->proc && c->proc->pid != p->pid){
-      c->proc->times_chosen++;
-    }
-    c->proc = p;
-    switchuvm(p);
-    p->state = RUNNING;
+  if (next_proc == 0)
+  {
+    next_proc = lowest_picked_medium_priority();
+  }
 
-    swtch(&(c->scheduler), p->context);
-    switchkvm();
-    return;
+  return next_proc;
+}
+
+void promote_process_priority()
+{
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state != RUNNABLE)
+    {
+      continue;
+    }
+    p->retime++;
+    if (p->priority == LOW && p->retime >= E1TO2)
+    {
+      p->priority = MEDIUM;
+    }
+    else if (p->priority == MEDIUM && p->retime >= E2TO3)
+    {
+      p->priority = HIGH;
+    }
+    else if (p->priority == HIGH && p->retime >= E3TO4)
+    {
+      p->priority = REALTIME;
+    }
   }
 }
 // PAGEBREAK: 42
@@ -465,23 +442,40 @@ void scheduler(void)
 {
 
   struct cpu *c = mycpu();
+  struct proc *current = 0;
   c->proc = 0;
   int prempt = 0;
   for (prempt = 0; 1; prempt++)
   {
     // Enable interrupts on this processor.
     sti();
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    if (c->proc != 0 && c->proc->state == RUNNING)
-    {
-      c->proc->time_running++;
-    }
 
+    acquire(&ptable.lock);
+    promote_process_priority();
     if (prempt == INTERV)
     {
-      premptProcess(c);
       prempt = 0;
+      struct proc *next = premptProcess();
+      if (next == 0)
+      {
+        release(&ptable.lock);
+        continue;
+      }
+      current = next;
+      current->times_picked++;
+    }
+    if (current != 0 && (current->state == RUNNABLE || current->state == RUNNING))
+    {
+      c->proc = current;
+      switchuvm(current);
+      current->state = RUNNING;
+      swtch(&(c->scheduler), current->context);
+      switchkvm();
+      c->proc = 0;
+    }
+    else
+    {
+      c->proc = 0;
     }
     release(&ptable.lock);
   }
