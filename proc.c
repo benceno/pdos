@@ -92,9 +92,9 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->times_picked = 0;
-  p->time_running = 0;
+  p->rutime = 0;
   p->priority = LOW;
-  p->create_time = ticks;
+  p->ctime = ticks;
   p->retime = 0;
   release(&ptable.lock);
   // Allocate kernel stack.
@@ -338,9 +338,9 @@ struct proc *fcfs_realtime_priority()
     {
       continue;
     }
-    else if (oldest_time == -1 || p->create_time < oldest_time)
+    else if (oldest_time == -1 || p->ctime < oldest_time)
     {
-      oldest_time = p->create_time;
+      oldest_time = p->ctime;
       oldest_proc = p;
     }
   }
@@ -407,10 +407,18 @@ struct proc *premptProcess(void)
   return next_proc;
 }
 
-void promote_process_priority()
+void process_aging()
 {
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
+    if (p->state == SLEEPING)
+    {
+      p->stime++;
+    }
+    if (p->state == RUNNING)
+    {
+      p->rutime++;
+    }
     if (p->state != RUNNABLE)
     {
       continue;
@@ -451,7 +459,7 @@ void scheduler(void)
     sti();
 
     acquire(&ptable.lock);
-    promote_process_priority();
+    process_aging();
     if (prempt == INTERV)
     {
       prempt = 0;
