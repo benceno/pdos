@@ -393,16 +393,16 @@ struct proc *lowest_picked_medium_priority()
 struct proc *fcfs_low_priority()
 {
   struct proc *oldest_proc = 0;
-  int oldest_time = -1;
+  int oldest_ctime = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if (p->state != RUNNABLE || p->priority != LOW)
     {
       continue;
     }
-    if (oldest_time == -1 || p->last_cycle < oldest_time)
+    if (oldest_ctime == -1 || p->ctime < oldest_ctime)
     {
-      oldest_time = p->last_cycle;
+      oldest_ctime = p->ctime;
       oldest_proc = p;
     }
   }
