@@ -324,36 +324,14 @@ int wait(void)
     sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
 }
-/**
- * First Come First Served
- * @return struct proc* the oldest process with last_cycle
- */
-struct proc *fcfs_realtime_priority()
-{
-  struct proc *oldest_proc = 0;
-  int oldest_time = -1;
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    if (p->state != RUNNABLE || p->priority != REALTIME)
-    {
-      continue;
-    }
-    if (oldest_time == -1 || p->last_cycle < oldest_time)
-    {
-      oldest_time = p->last_cycle;
-      oldest_proc = p;
-    }
-  }
-  return oldest_proc;
-}
 // Round robin
-struct proc *round_robin_high_priority()
+struct proc *round_robin_realtime_priority()
 {
   struct proc *next_proc = 0;
   int older_cycle = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE || p->priority != HIGH)
+    if (p->state != RUNNABLE || p->priority != REALTIME)
     {
       continue;
     }
@@ -366,10 +344,31 @@ struct proc *round_robin_high_priority()
   return next_proc;
 }
 /**
+ * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
+ * @return struct proc* the process with the greatest time_running/times_chosen
+ */
+struct proc *greatest_time_usage_high_priority()
+{
+  struct proc *io_bound_process = 0;
+  int times_picked = -1;
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state == RUNNABLE || p->priority == HIGH)
+    {
+      if (times_picked == -1 || times_picked >= p->times_picked)
+      {
+        times_picked = p->times_picked;
+        io_bound_process = p;
+      }
+    }
+  }
+  return io_bound_process;
+}
+/**
  * Lowest picked by scheduler, based on CFS, giving more processor time to the process with the lowest times_picked
  * @return struct proc* the process with the lowest times_picked
  */
-struct proc *lowest_picked_low_priority()
+struct proc *lowest_picked_medium_priority()
 {
   struct proc *io_bound_process = 0;
   int times_picked = -1;
@@ -388,25 +387,26 @@ struct proc *lowest_picked_low_priority()
   return io_bound_process;
 }
 /**
- * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
- * @return struct proc* the process with the greatest time_running/times_chosen
+ * First Come First Served
+ * @return struct proc* the oldest process with last_cycle
  */
-struct proc *greatest_time_usage_medium_priority()
+struct proc *fcfs_low_priority()
 {
-  struct proc *io_bound_process = 0;
-  int times_picked = -1;
+  struct proc *oldest_proc = 0;
+  int oldest_time = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state == RUNNABLE || p->priority == LOW)
+    if (p->state != RUNNABLE || p->priority != LOW)
     {
-      if (times_picked == -1 || times_picked >= p->times_picked)
-      {
-        times_picked = p->times_picked;
-        io_bound_process = p;
-      }
+      continue;
+    }
+    if (oldest_time == -1 || p->last_cycle < oldest_time)
+    {
+      oldest_time = p->last_cycle;
+      oldest_proc = p;
     }
   }
-  return io_bound_process;
+  return oldest_proc;
 }
 /**
  * Switch to the next process in the queue that is runnable
@@ -414,17 +414,17 @@ struct proc *greatest_time_usage_medium_priority()
 struct proc *premptProcess(void)
 {
   struct proc *next_proc = 0;
-  next_proc = fcfs_realtime_priority();
+  next_proc = round_robin_realtime_priority();
   if (next_proc <= 0)
   {
-    next_proc = round_robin_high_priority();
+    next_proc = greatest_time_usage_high_priority();
   }
   if(next_proc == 0){
-    next_proc = greatest_time_usage_medium_priority();
+    next_proc = lowest_picked_medium_priority();
   }
   if (next_proc <= 0)
   {
-    next_proc = lowest_picked_low_priority();
+    next_proc = fcfs_low_priority();
   }
 
   return next_proc;
