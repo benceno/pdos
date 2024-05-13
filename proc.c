@@ -347,17 +347,17 @@ struct proc *round_robin_realtime_priority()
  * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
  * @return struct proc* the process with the greatest time_running/times_chosen
  */
-struct proc *greatest_time_usage_high_priority()
+struct proc *lower_rutime_high_priority()
 {
   struct proc *io_bound_process = 0;
-  int times_picked = -1;
+  int rutime_lower = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if (p->state == RUNNABLE || p->priority == HIGH)
     {
-      if (times_picked == -1 || times_picked >= p->times_picked)
+      if (rutime_lower == -1 || rutime_lower >= p->rutime)
       {
-        times_picked = p->times_picked;
+        rutime_lower = p->rutime;
         io_bound_process = p;
       }
     }
@@ -370,7 +370,7 @@ struct proc *greatest_time_usage_high_priority()
  */
 struct proc *lowest_picked_medium_priority()
 {
-  struct proc *io_bound_process = 0;
+  struct proc *lowest_picked = 0;
   int times_picked = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
@@ -381,10 +381,10 @@ struct proc *lowest_picked_medium_priority()
     if (times_picked == -1 || times_picked >= p->times_picked)
     {
       times_picked = p->times_picked;
-      io_bound_process = p;
+      lowest_picked = p;
     }
   }
-  return io_bound_process;
+  return lowest_picked;
 }
 /**
  * First Come First Served
@@ -417,7 +417,7 @@ struct proc *premptProcess(void)
   next_proc = round_robin_realtime_priority();
   if (next_proc <= 0)
   {
-    next_proc = greatest_time_usage_high_priority();
+    next_proc = lower_rutime_high_priority();
   }
   if(next_proc == 0){
     next_proc = lowest_picked_medium_priority();
