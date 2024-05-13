@@ -47,7 +47,7 @@ int main (int argc, char *argv[]) {
   }
 
   int num_processes = atoi(argv[1]) * 3; //quantidade de processos
-  int processesAmount[3] = {0,0,0};
+  int processes_amount[3] = {0,0,0};
   int sum_ready_time[3] = {0,0,0};
   int sum_sleep_time[3] = {0,0,0};
   int sum_turnaround_time[3] = {0,0,0};
@@ -57,11 +57,11 @@ int main (int argc, char *argv[]) {
     if (process_id == 0) { //processo filho
       int type = getpid() % 3;
       Create_Process (type); //chama funcao para executar a atividade
+      exit();
     }
     else { //processo pai
       //atualiza contador de processos para o tipo de atividade do processo filho
-      processesAmount[process_id % 3]++;
-      exit (); //encerra processo pai apos criacao de cada processo filho
+      processes_amount[process_id % 3]++;
     }
   }
   
@@ -97,10 +97,10 @@ int main (int argc, char *argv[]) {
       type = "IO_BOUND";
     }
 
-    printf (1, "%s Contador de processos: %d\n", type, processesAmount[j]);
-    printf (1, "%s Média ready time: %d\n", type, sum_ready_time[j] / processesAmount[j]);
-    printf (1, "%s Média sleeping time: %d\n", type, sum_sleep_time[j] / processesAmount[j]);
-    printf (1, "%s Média turnaround time: %d\n", type, sum_turnaround_time[j] / processesAmount[j]);
+    printf (1, "%s Contador de processos: %d\n", type, processes_amount[j]);
+    printf (1, "%s Média ready time: %d\n", type, sum_ready_time[j] / processes_amount[j]);
+    printf (1, "%s Média sleeping time: %d\n", type, sum_sleep_time[j] / processes_amount[j]);
+    printf (1, "%s Média turnaround time: %d\n", type, sum_turnaround_time[j] / processes_amount[j]);
 
    
   }
