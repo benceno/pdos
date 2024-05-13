@@ -90,6 +90,7 @@ sys_uptime(void)
   return xticks;
 }
 
+
 int 
 sys_set_prio(void)
 {
@@ -119,3 +120,4 @@ sys_wait2(void)
 
   return wait2(retime, rutime, stime);
 }
+

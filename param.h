@@ -12,6 +12,11 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE     1000  // size of file system in blocks
 #define INTERV        5  // time slice in clock cycles
+
 #define P1TO2       200  // time waiting before promotion from priority 1 to 2 (testar com 5)
 #define P2TO3       100  // time waiting before promotion from priority 2 to 3 (testar com 5)
 #define P3TO4        50  // time waiting before promotion from priority 3 to 4 (testar com 5)
+
+#define P1TO2       200  // time waiting before promotion from priority 1 to 2
+#define P2TO3       100  // time waiting before promotion from priority 2 to 3
+#define P3TO4        50  // time waiting before promotion from priority 3 to 4

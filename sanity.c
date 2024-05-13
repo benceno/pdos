@@ -1,11 +1,14 @@
 #include "types.h"
 #include "user.h"
+
 #include "stat.h"
 #include "fcntl.h"
+
 
 #define CPU_BOUND 0
 #define S_BOUND 1
 #define IO_BOUND 2
+
 
 //prototipo da funcao wait2
 int wait2(int *retime, int *rutime, int *stime);
@@ -14,6 +17,11 @@ void CPU_Bound (void) {
   for (int i = 0; i < 100; i++) {
     for (int j = 0; j < 1000000; j++){
         //codigo para ocupar a cpu
+
+void CPU_Bound (void) {
+  for (int i = 0; i < 100; i++) {
+    for (int j = 0; j < 1000000; j++){
+
     }
   }
 }
@@ -21,6 +29,7 @@ void CPU_Bound (void) {
 void S_Bound (void) {
   for (int i = 0; i < 20; i++) {
     for (int j = 0; j < 1000000; j++){
+
       //codigo para ocupar a cpu
       
     }
@@ -53,6 +62,7 @@ void Create_Process (int type) {
 int main (int argc, char *argv[]) {
   if (argc != 2) {
     printf (1, "One parameter expected\n");
+
     exit();
   }
 
@@ -122,4 +132,24 @@ int main (int argc, char *argv[]) {
   }
 
   exit();
+
+  }
+
+  int num_processes = atoi(argv[1]) * 3;
+  //int sum_ready_time[3] = {0,0,0};
+  //int sum_sleep_time[3] = {0,0,0};
+  //int sum_turnaround_time[3] = {0,0,0};
+
+  for (int i = 0; i < num_processes; i++) {
+    int process_id = fork();
+    if (process_id == 0) {
+      Create_Process (getpid() % 3);
+    }
+    exit ();
+  }
+  
+  // Chamar função wait2 e calcular rutime, retime e stime médios
+
+  return 0;
+
 }

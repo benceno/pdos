@@ -89,12 +89,17 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+
   //mudanças aqui
   p->priority = 2;
   acquire(&tickslock);
   p->timeslice_tracker = 0;
   p->ctime = ticks;
   release(&tickslock);
+
+  p->timeslice_tracker = 0;
+  p->ctime = ticks;
+
   p->stime = 0;
   p->retime = 0;
   p->rutime = 0;
@@ -344,6 +349,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
+
     // aging
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
@@ -384,6 +390,12 @@ scheduler(void)
 
     if (found)
     {
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -399,6 +411,7 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
+
   }
 }
 
@@ -580,8 +593,9 @@ procdump(void)
   }
 }
 
+
 //mudanças aqui
-void 
+
 clock(void)
 {
   struct proc *p;
@@ -603,6 +617,7 @@ clock(void)
     }
   }
   release(&ptable.lock);
+
 }
 
 int set_prio(int priority)
@@ -702,4 +717,5 @@ user_yield(void)
 {
   yield();
   return 0;
+
 }

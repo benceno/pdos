@@ -121,12 +121,18 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 
+
 //mudanças aqui
 void            clock(void);
 int             wait2(int* retime, int* rutime, int* stime);
 int             set_prio(int);  
 int 			user_yield();
 void 			update_counters(void);         
+
+void            clock(void);
+int             wait2(int* retime, int* rutime, int* stime);
+int             set_prio(int);           
+
 
 // swtch.S
 void            swtch(struct context**, struct context*);
