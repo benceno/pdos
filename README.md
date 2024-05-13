@@ -3,6 +3,7 @@
 ## Authors:
 
 Marcos Paulo Ferreira de Souza: https://github.com/MP022
+
 João Vítor Santana Depollo: https://github.com/@JoaoVitorSD
 
 ### 1. Introdução
