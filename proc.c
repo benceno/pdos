@@ -397,7 +397,7 @@ struct proc *greatest_time_usage_medium_priority()
   int times_picked = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state == RUNNABLE && p->priority == LOW)
+    if (p->state == RUNNABLE || p->priority == LOW)
     {
       if (times_picked == -1 || times_picked >= p->times_picked)
       {
