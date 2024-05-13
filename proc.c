@@ -367,7 +367,6 @@ struct proc *round_robin_high_priority()
 }
 /**
  * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
- * @param medium_list list of realtime processes
  * @return struct proc* the process with the greatest time_running/times_chosen
  */
 struct proc *greatest_time_usage_medium_priority()
@@ -376,7 +375,7 @@ struct proc *greatest_time_usage_medium_priority()
   int ratio_rutime_picked = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != LOW)
+    if (p->state != RUNNABLE || p->priority != MEDIUM)
     {
       continue;
     }
@@ -398,7 +397,7 @@ struct proc *lowest_picked_low_priority()
   int times_picked = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != MEDIUM)
+    if (p->state != RUNNABLE || p->priority != LOW)
     {
       continue;
     }
@@ -421,6 +420,10 @@ struct proc *premptProcess(void)
   if (next_proc == 0)
   {
     next_proc = round_robin_high_priority();
+  }
+  if (next_proc == 0)
+  {
+    next_proc = greatest_time_usage_medium_priority();
   }
   if (next_proc == 0)
   {
