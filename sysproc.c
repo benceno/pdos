@@ -90,6 +90,11 @@ sys_uptime(void)
   return xticks;
 }
 
+int
+sys_yield(void) {
+  yield();
+  return 0;
+}
 
 int 
 sys_set_prio(void)

@@ -120,6 +120,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void            clock(void);
+int             wait2(int* retime, int* rutime, int* stime);
+int             set_prio(int);           
 
 
 //mudanças aqui

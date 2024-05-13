@@ -88,22 +88,12 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
-
-  //mudanças aqui
-  p->priority = 2;
-  acquire(&tickslock);
   p->timeslice_tracker = 0;
   p->ctime = ticks;
-  release(&tickslock);
-
-  p->timeslice_tracker = 0;
-  p->ctime = ticks;
-
   p->stime = 0;
   p->retime = 0;
   p->rutime = 0;
-
+  p->priority = 2;
 
   release(&ptable.lock);
 
@@ -388,30 +378,28 @@ scheduler(void)
       priorities--;
     };
 
-    if (found)
-    {
-
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    if (found) {
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
 
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -593,9 +581,7 @@ procdump(void)
   }
 }
 
-
-//mudanças aqui
-
+void 
 clock(void)
 {
   struct proc *p;
@@ -638,7 +624,6 @@ int set_prio(int priority)
 
 int wait2(int *retime, int *rutime, int *stime) {
   struct proc *p;
-  struct proc *current_process = myproc(); // Obtém o processo atual
 
   int pid;
   int havekids = 0; // Variável para verificar se existem filhos
@@ -650,7 +635,7 @@ int wait2(int *retime, int *rutime, int *stime) {
     // Percorre a lista de processos
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
       // Verifica se o processo atual é pai do processo em análise
-      if (p->parent != current_process) {
+      if (p->parent != myproc()) {
         continue; // Se não for pai, continua para o próximo processo
       }
       havekids = 1; // Marca que há pelo menos um filho
@@ -680,42 +665,11 @@ int wait2(int *retime, int *rutime, int *stime) {
     }
       
   // Se não houver processos filhos ou se o processo atual foi sinalizado para terminar
-  if (!havekids || current_process->killed) {
+  if (!havekids || myproc()->killed) {
       release(&ptable.lock); // Libera o lock da tabela de processos
       return -1; // Retorna -1 indicando que não há processos filhos para esperar
   }
   
-  sleep(current_process, &ptable.lock); // Aguarda até que um processo filho termine
+  sleep(myproc(), &ptable.lock); // Aguarda até que um processo filho termine
   }
-}
-
-void update_counters(void)
-{
-  struct proc *p;
-
-  acquire(&ptable.lock);
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    if (p->state == RUNNABLE)
-    {
-      p->retime++;
-    }
-    else if (p->state == RUNNING)
-    {
-      p->rutime++;
-    }
-    else if (p->state == SLEEPING)
-    {
-      p->stime++;
-    }
-  }
-  release(&ptable.lock);
-}
-
-int
-user_yield(void)
-{
-  yield();
-  return 0;
-
 }
