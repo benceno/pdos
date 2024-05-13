@@ -94,6 +94,22 @@ found:
   p->retime = 0;
   p->rutime = 0;
 
+
+  //mudanças aqui
+  p->priority = 2;
+  acquire(&tickslock);
+  p->timeslice_tracker = 0;
+  p->ctime = ticks;
+  release(&tickslock);
+
+  p->timeslice_tracker = 0;
+  p->ctime = ticks;
+
+  p->stime = 0;
+  p->retime = 0;
+  p->rutime = 0;
+
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -337,9 +353,53 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+
+    // aging
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state == RUNNABLE)
+      {
+        if (p->priority == 1 && p->retime % P1TO2 == 0)
+        {
+          p->priority = 2;
+          continue;
+        }
+        if (p->priority == 2 && p->retime % P2TO3 == 0)
+        {
+          p->priority = 3;
+          continue;
+        }
+      }
+    }
+
+    //multilevel scaling
+    int priorities = 3;
+    int found = 0;
+    while (priorities != 0)
+    {
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if (p->priority == priorities && p->state == RUNNABLE)
+        {
+          found = 1;
+          break;
+        }
+      }
+      if (found == 1)
+      {
+        break;
+      }
+      priorities--;
+    };
+
+    if (found)
+    {
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -557,6 +617,99 @@ clock(void)
     else if (p->state == RUNNABLE)
     {
       p->retime++;
+    }
+  }
+  release(&ptable.lock);
+
+}
+
+int set_prio(int priority)
+{
+  acquire(&ptable.lock);
+
+  if (myproc()->killed || priority < 1 || priority > 3)
+  {
+    return -1;
+  }
+
+  release(&ptable.lock);
+
+  myproc()->priority = priority;
+
+  return 0;
+}
+
+int wait2(int *retime, int *rutime, int *stime) {
+  struct proc *p;
+  struct proc *current_process = myproc(); // Obtém o processo atual
+
+  int pid;
+  int havekids = 0; // Variável para verificar se existem filhos
+
+  acquire(&ptable.lock); // Adquire o lock da tabela de processos
+
+  for (;;) { // Loop infinito para aguardar até que um processo filho termine
+    havekids = 0;
+    // Percorre a lista de processos
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      // Verifica se o processo atual é pai do processo em análise
+      if (p->parent != current_process) {
+        continue; // Se não for pai, continua para o próximo processo
+      }
+      havekids = 1; // Marca que há pelo menos um filho
+      // Se o processo filho terminou (estado ZOMBIE)
+      if (p->state == ZOMBIE) {
+        // Coleta estatísticas do processo filho
+        *stime = p->stime;
+        *retime = p->retime;
+        *rutime = p->rutime;
+        pid = p->pid; // Obtém o PID do processo filho
+        // Libera recursos associados ao processo filho
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->state = UNUSED; // Marca o estado como UNUSED
+        p->pid = 0; // Reseta o PID
+        p->parent = 0; // Reseta o pai
+        p->name[0] = 0; // Reseta o nome
+        p->killed = 0; // Reseta a flag de kill
+        p->ctime = 0; // Reseta o tempo de criação
+        p->stime = 0; // Reseta o tempo em estado de espera
+        p->retime = 0; // Reseta o tempo de execução
+        p->rutime = 0; // Reseta o tempo em estado de execução
+        release(&ptable.lock); // Libera o lock da tabela de processos
+        return pid; // Retorna o PID do processo filho
+      }
+    }
+      
+  // Se não houver processos filhos ou se o processo atual foi sinalizado para terminar
+  if (!havekids || current_process->killed) {
+      release(&ptable.lock); // Libera o lock da tabela de processos
+      return -1; // Retorna -1 indicando que não há processos filhos para esperar
+  }
+  
+  sleep(current_process, &ptable.lock); // Aguarda até que um processo filho termine
+  }
+}
+
+void update_counters(void)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state == RUNNABLE)
+    {
+      p->retime++;
+    }
+    else if (p->state == RUNNING)
+    {
+      p->rutime++;
+    }
+    else if (p->state == SLEEPING)
+    {
+      p->stime++;
     }
   }
   release(&ptable.lock);

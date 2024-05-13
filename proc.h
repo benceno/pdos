@@ -54,6 +54,7 @@ struct proc {
   int stime;                   // Time SLEEPING
   int retime;                  // Time RUNNABLE
   int rutime;                  // Time RUNNING
+  int priority;                // priority
 };
 
 // Process memory is laid out contiguously, low addresses first:
