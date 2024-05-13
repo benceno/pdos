@@ -334,7 +334,7 @@ struct proc *fcfs_realtime_priority()
   int oldest_time = -1;
   for (struct proc *p; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != REALTIME)
+    if (p->state != RUNNABLE || p->priority != REALTIME)
     {
       continue;
     }
@@ -460,10 +460,6 @@ void process_aging()
     {
       p->stime++;
     }
-    if (p->state == RUNNING)
-    {
-      p->rutime++;
-    }
     if (p->state != RUNNABLE)
     {
       continue;
@@ -521,8 +517,8 @@ void scheduler(void)
     if (current != 0 && (current->state == RUNNABLE || current->state == RUNNING))
     {
       c->proc = current;
+      current->rutime++;
       switchuvm(current);
-      current->state = RUNNING;
       swtch(&(c->scheduler), current->context);
       switchkvm();
       c->proc = 0;
