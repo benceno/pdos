@@ -326,7 +326,7 @@ int wait(void)
 }
 /**
  * First Come First Served
- * @return struct proc* the oldest process
+ * @return struct proc* the oldest process with last_cycle
  */
 struct proc *fcfs_realtime_priority()
 {
@@ -338,9 +338,9 @@ struct proc *fcfs_realtime_priority()
     {
       continue;
     }
-    else if (oldest_time == -1 || p->ctime < oldest_time)
+    else if (oldest_time == -1 || p->last_cycle < oldest_time)
     {
-      oldest_time = p->ctime;
+      oldest_time = p->last_cycle;
       oldest_proc = p;
     }
   }
@@ -406,7 +406,29 @@ struct proc *premptProcess(void)
 
   return next_proc;
 }
+int change_prio(int priority)
+{
 
+  switch (priority)
+  {
+  case 1:
+    return LOW;
+    break;
+  case 2:
+    return MEDIUM;
+    break;
+  case 3:
+    return HIGH;
+    break;
+  case 4:
+    return REALTIME;
+    break;
+  default:
+    panic("Invalid priority");
+    return -1;
+  }
+  return 0;
+}
 void process_aging()
 {
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -426,15 +448,15 @@ void process_aging()
     p->retime++;
     if (p->priority == LOW && p->retime >= E1TO2)
     {
-      p->priority = MEDIUM;
+      p->priority = change_prio(2);
     }
     else if (p->priority == MEDIUM && p->retime >= E2TO3)
     {
-      p->priority = HIGH;
+      p->priority = change_prio(3);
     }
     else if (p->priority == HIGH && p->retime >= E3TO4)
     {
-      p->priority = REALTIME;
+      p->priority = change_prio(4);
     }
   }
 }
@@ -471,6 +493,7 @@ void scheduler(void)
       }
       current = next;
       current->times_picked++;
+      current->last_cycle = ticks;
     }
     if (current != 0 && (current->state == RUNNABLE || current->state == RUNNING))
     {
@@ -481,38 +504,12 @@ void scheduler(void)
       switchkvm();
       c->proc = 0;
     }
-    else
-    {
-      c->proc = 0;
-    }
+
     release(&ptable.lock);
   }
 }
 
-int change_prio(int priority)
-{
-  struct proc *p = myproc();
-  enum procpriority *prio = &p->priority;
 
-  switch (priority)
-  {
-  case 1:
-    *prio = LOW;
-    break;
-  case 2:
-    *prio = MEDIUM;
-    break;
-  case 3:
-    *prio = HIGH;
-    break;
-  case 4:
-    *prio = REALTIME;
-    break;
-  default:
-    return -1;
-  }
-  return 0;
-}
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
