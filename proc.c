@@ -334,7 +334,7 @@ struct proc *fcfs_realtime_priority()
   int oldest_time = -1;
   for (struct proc *p; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != REALTIME)
+    if (p->state != RUNNABLE || p->priority != REALTIME)
     {
       continue;
     }
@@ -353,7 +353,7 @@ struct proc *round_robin_high_priority()
   int older_cycle = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != HIGH)
+    if (p->state != RUNNABLE || p->priority != HIGH)
     {
       continue;
     }
@@ -366,16 +366,39 @@ struct proc *round_robin_high_priority()
   return next_proc;
 }
 /**
+ * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
+ * @param medium_list list of realtime processes
+ * @return struct proc* the process with the greatest time_running/times_chosen
+ */
+struct proc *greatest_time_usage_medium_priority()
+{
+  struct proc *io_bound_process = 0;
+  int ratio_rutime_picked = -1;
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state != RUNNABLE || p->priority != LOW)
+    {
+      continue;
+    }
+    if (ratio_rutime_picked == -1 || ratio_rutime_picked >= p->rutime/p->times_picked)
+    {
+      ratio_rutime_picked = p->rutime/p->times_picked;
+      io_bound_process = p;
+    }
+  }
+  return io_bound_process;
+}
+/**
  * Lowest picked by scheduler, based on CFS, giving more processor time to the process with the lowest times_picked
  * @return struct proc* the process with the lowest times_picked
  */
-struct proc *lowest_picked_medium_priority()
+struct proc *lowest_picked_low_priority()
 {
   struct proc *io_bound_process = 0;
   int times_picked = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != MEDIUM)
+    if (p->state != RUNNABLE || p->priority != MEDIUM)
     {
       continue;
     }
@@ -401,7 +424,7 @@ struct proc *premptProcess(void)
   }
   if (next_proc == 0)
   {
-    next_proc = lowest_picked_medium_priority();
+    next_proc = lowest_picked_low_priority();
   }
 
   return next_proc;
