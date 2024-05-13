@@ -332,13 +332,13 @@ struct proc *fcfs_realtime_priority()
 {
   struct proc *oldest_proc = 0;
   int oldest_time = -1;
-  for (struct proc *p; p < &ptable.proc[NPROC]; p++)
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if (p->state != RUNNABLE || p->priority != REALTIME)
     {
       continue;
     }
-    else if (oldest_time == -1 || p->last_cycle < oldest_time)
+    if (oldest_time == -1 || p->last_cycle < oldest_time)
     {
       oldest_time = p->last_cycle;
       oldest_proc = p;
@@ -353,7 +353,7 @@ struct proc *round_robin_high_priority()
   int older_cycle = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE && p->priority != HIGH)
+    if (p->state != RUNNABLE || p->priority != HIGH)
     {
       continue;
     }
@@ -366,28 +366,6 @@ struct proc *round_robin_high_priority()
   return next_proc;
 }
 /**
- * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
- * @return struct proc* the process with the greatest time_running/times_chosen
- */
-struct proc *greatest_time_usage_medium_priority()
-{
-  struct proc *io_bound_process = 0;
-  int ratio_rutime_picked = -1;
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    if (p->state != RUNNABLE || p->priority != MEDIUM)
-    {
-      continue;
-    }
-    if (ratio_rutime_picked == -1 || ratio_rutime_picked >= p->rutime/p->times_picked)
-    {
-      ratio_rutime_picked = p->rutime/p->times_picked;
-      io_bound_process = p;
-    }
-  }
-  return io_bound_process;
-}
-/**
  * Lowest picked by scheduler, based on CFS, giving more processor time to the process with the lowest times_picked
  * @return struct proc* the process with the lowest times_picked
  */
@@ -397,7 +375,7 @@ struct proc *lowest_picked_low_priority()
   int times_picked = -1;
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if (p->state != RUNNABLE || p->priority != LOW)
+    if (p->state != RUNNABLE || p->priority != MEDIUM)
     {
       continue;
     }
@@ -409,7 +387,27 @@ struct proc *lowest_picked_low_priority()
   }
   return io_bound_process;
 }
-
+/**
+ * Greatest time usage, based on CFS, giving more processor time to the process with the greatest time_running/times_chosen
+ * @return struct proc* the process with the greatest time_running/times_chosen
+ */
+struct proc *greatest_time_usage_medium_priority()
+{
+  struct proc *io_bound_process = 0;
+  int times_picked = -1;
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state == RUNNABLE && p->priority == LOW)
+    {
+      if (times_picked == -1 || times_picked >= p->times_picked)
+      {
+        times_picked = p->times_picked;
+        io_bound_process = p;
+      }
+    }
+  }
+  return io_bound_process;
+}
 /**
  * Switch to the next process in the queue that is runnable
  */
@@ -417,15 +415,14 @@ struct proc *premptProcess(void)
 {
   struct proc *next_proc = 0;
   next_proc = fcfs_realtime_priority();
-  if (next_proc == 0)
+  if (next_proc <= 0)
   {
     next_proc = round_robin_high_priority();
   }
-  if (next_proc == 0)
-  {
+  if(next_proc == 0){
     next_proc = greatest_time_usage_medium_priority();
   }
-  if (next_proc == 0)
+  if (next_proc <= 0)
   {
     next_proc = lowest_picked_low_priority();
   }
@@ -508,8 +505,10 @@ void scheduler(void)
     {
       prempt = 0;
       struct proc *next = premptProcess();
-      if (next == 0)
+      if (next <= 0)
       {
+        current = 0;
+        c->proc = 0;
         release(&ptable.lock);
         continue;
       }
@@ -522,15 +521,19 @@ void scheduler(void)
       c->proc = current;
       current->rutime++;
       switchuvm(current);
+      current->state = RUNNING;
       swtch(&(c->scheduler), current->context);
       switchkvm();
+      c->proc = 0;
+    }
+    else
+    {
       c->proc = 0;
     }
 
     release(&ptable.lock);
   }
 }
-
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
