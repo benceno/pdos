@@ -94,6 +94,7 @@ found:
   p->times_picked = 0;
   p->rutime = 0;
   p->priority = LOW;
+  p->stime = 0;
   p->ctime = ticks;
   p->retime = 0;
   release(&ptable.lock);

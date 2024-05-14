@@ -30,16 +30,16 @@ int main(int argc, char *argv[])
     int numberProcesses = atoi(argv[1]);
     int amount = numberProcesses * 3;
 
-    int *retime = malloc(sizeof(int *)), *rutime = malloc(sizeof(int *)), *stime = malloc(sizeof(int *));
+    int retime, rutime, stime;
     for (int i = 0; i < amount; i++)
     {
         int pid = fork();
         if(pid < 0)
             break;
         if (pid){
-            if (wait2(retime, rutime, stime) == pid)
+            if (wait2(&retime, &rutime, &stime) == pid)
             {
-                printf(1, "retime: %d, rutime: %d, stime: %d\n", *retime, *rutime, *stime);
+                printf(1, "retime: %d, rutime: %d, stime: %d\n", retime,rutime, stime);
             }
             else
             {
