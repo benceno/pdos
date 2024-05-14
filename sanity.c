@@ -19,6 +19,53 @@ enum proctype
     S_BOUND,
     IO_BOUND
 };
+
+char *proctype_string[] = {
+    "CPU_BOUND",
+    "S_BOUND",
+    "IO_BOUND"};
+
+void io_bound_loop()
+{
+    for (int j = 0; j < 100; j++)
+    {
+        sleep(1);
+    }
+    exit();
+}
+void s_bound_loop()
+{
+    for (int j = 0; j < 20; j++)
+    {
+        empty_loop(1000000);
+        yield();
+    }
+    exit();
+}
+void cpu_bound_loop()
+{
+    for (int j = 0; j < 100; j++)
+    {
+        empty_loop(1000000);
+    }
+    exit();
+}
+
+void run_bound_loop(enum proctype type)
+{
+    switch (type)
+    {
+    case CPU_BOUND:
+        cpu_bound_loop();
+    case S_BOUND:
+        s_bound_loop();
+    case IO_BOUND:
+        io_bound_loop();
+    default:
+        break;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -27,19 +74,23 @@ int main(int argc, char *argv[])
         exit();
     }
 
-    int numberProcesses = atoi(argv[1]);
-    int amount = numberProcesses * 3;
+    int amount = atoi(argv[1]);
+    int numberProcesses = amount * 3;
 
     int retime, rutime, stime;
-    for (int i = 0; i < amount; i++)
+    int total[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for (int i = 0; i < numberProcesses; i++)
     {
         int pid = fork();
-        if(pid < 0)
-            break;
-        if (pid){
+        enum proctype type = i % 3;
+        if (pid)
+        {
             if (wait2(&retime, &rutime, &stime) == pid)
             {
-                printf(1, "retime: %d, rutime: %d, stime: %d\n", retime,rutime, stime);
+                printf(1, "pid: %d, type: %s, retime: %d, rutime: %d, stime: %d\n", i, proctype_string[type], retime, rutime, stime);
+                total[type][0] += retime;
+                total[type][1] += rutime;
+                total[type][2] += stime + rutime+retime;
             }
             else
             {
@@ -48,42 +99,18 @@ int main(int argc, char *argv[])
         }
         else
         {
-            enum proctype type = i % 3;
-            switch (type)
-            {
-            case CPU_BOUND:
-                for (int j = 0; j < 100; j++)
-                {
-                    empty_loop(10000);
-                }
-                printf(1, "%d: CPU_BOUND\n", i);
-                exit();
-            case S_BOUND:
-                for (int j = 0; j < 20; j++)
-                {
-                    empty_loop(10000);
-                    yield();
-                }
-                printf(1, "%d: S_BOUND\n", i);
-                exit();
-            case IO_BOUND:
-                for (int j = 0; j < 100; j++)
-                {
-                    sleep(1);
-                }
-                printf(1, "%d: IO_BOUND\n", i);
-                exit();
-            default:
-                break;
-            }
+            run_bound_loop(type);
         }
-        
-    }
-    
-    if(wait() != -1){
-        printf(1, "wait got too many\n");
-        exit();
     }
 
+    printf(1, "Process averages\n");
+    for (int i = 0; i < 3; i++)
+    {
+        printf(1, "type: %s, retime: %d, rutime: %d, turnaround: %d\n", proctype_string[i],
+               total[i][0] / numberProcesses,
+               total[i][1] / numberProcesses,
+               total[i][2] / numberProcesses);
+    }
+    exit();
     return 0;
 }

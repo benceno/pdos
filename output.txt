@@ -1,0 +1,38 @@
+qemu-system-i386 -serial mon:stdio -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 2 -m 512 
+xv6...
+cpu0: starting 0
+sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap start 58
+init: starting sh
+$ sanity 5
+0: CPU_BOUND
+retime: 5, rutime: 1, stime: 0
+1: S_BOUND
+retime: 25, rutime: 21, stime: 0
+2: IO_BOUND
+retime: 331, rutime: 101, stime: 565624
+3: CPU_BOUND
+retime: 5, rutime: 1, stime: 0
+4: S_BOUND
+retime: 25, rutime: 21, stime: 0
+5: IO_BOUND
+retime: 328, rutime: 101, stime: 560381
+6: CPU_BOUND
+retime: 5, rutime: 1, stime: 0
+7: S_BOUND
+retime: 24, rutime: 21, stime: 0
+8: IO_BOUND
+retime: 312, rutime: 101, stime: 556028
+9: CPU_BOUND
+retime: 5, rutime: 1, stime: 0
+10: S_BOUND
+retime: 26, rutime: 22, stime: 0
+11: IO_BOUND
+retime: 316, rutime: 101, stime: 565199
+12: CPU_BOUND
+retime: 5, rutime: 1, stime: 0
+13: S_BOUND
+retime: 26, rutime: 22, stime: 0
+14: IO_BOUND
+retime: 302, rutime: 101, stime: 563438
+pid 3 sanity: trap 14 err 5 on cpu 0 eip 0xffffffff addr 0xffffffff--kill proc
+$ 
