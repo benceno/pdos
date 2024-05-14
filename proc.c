@@ -324,8 +324,19 @@ int wait(void)
     sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
 }
+
+int wait2(int *retime, int *rutime, int *stime){
+  if(wait() <0){
+    return -1;
+  }
+  struct proc *p = myproc();
+  *retime = p->retime;
+  *rutime = p->rutime;
+  *stime = p->stime;
+  return 0; 
+}
 // Round robin
-struct proc *round_robin_realtime_priority()
+    struct proc *round_robin_realtime_priority()
 {
   struct proc *next_proc = 0;
   int older_cycle = -1;

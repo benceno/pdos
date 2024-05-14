@@ -25,7 +25,9 @@ sys_wait(void)
 {
   return wait();
 }
-
+int sys_wait2(int *retime, int *rutime, int *stime){
+  return wait2(retime, rutime, stime);
+}
 int
 sys_kill(void)
 {

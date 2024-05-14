@@ -20,6 +20,10 @@
     "defs.h": "c",
     "memlayout.h": "c",
     "x86.h": "c",
-    "param.h": "c"
+    "param.h": "c",
+    "stat.h": "c",
+    "syscall.h": "c",
+    "traps.h": "c",
+    "fs.h": "c"
   }
 }
