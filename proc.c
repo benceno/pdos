@@ -326,14 +326,41 @@ int wait(void)
 }
 
 int wait2(int *retime, int *rutime, int *stime){
-  if(wait() <0){
-    return -1;
+  struct proc *p;
+  int havekids;
+  struct proc *curproc = myproc();
+
+  acquire(&ptable.lock);
+  for (;;)
+  {
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->parent != curproc)
+        continue;
+      havekids = 1;
+      if (p->state == ZOMBIE)
+      {
+        // Found one.
+        *retime = p->retime;
+        *rutime = p->rutime;
+        *stime = p->stime;
+        release(&ptable.lock);
+        return wait();
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if (!havekids || curproc->killed)
+    {
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
-  struct proc *p = myproc();
-  *retime = p->retime;
-  *rutime = p->rutime;
-  *stime = p->stime;
-  return 0; 
 }
 // Round robin
     struct proc *round_robin_realtime_priority()
