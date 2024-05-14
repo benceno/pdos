@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
                 for (int j = 0; j < 20; j++)
                 {
                     empty_loop(10000);
-                    // yield();
+                    yield();
                 }
                 printf(1, "%d: S_BOUND\n", i);
                 exit();
