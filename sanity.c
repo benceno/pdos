@@ -90,17 +90,12 @@ int main(int argc, char *argv[])
                 printf(1, "pid: %d, type: %s, retime: %d, rutime: %d, stime: %d\n", i, proctype_string[type], retime, rutime, stime);
                 total[type][0] += retime;
                 total[type][1] += rutime;
-                total[type][2] += stime + rutime+retime;
+                total[type][2] += stime + rutime + retime;
             }
-            else
-            {
-                printf(1, "error wait2\n");
-            }
+
+            continue;
         }
-        else
-        {
-            run_bound_loop(type);
-        }
+        run_bound_loop(type);
     }
 
     printf(1, "Process averages\n");
