@@ -12,9 +12,10 @@ O objetivo deste trabalho é implementar alterações na política de escaloname
 
 ### Scheduller
 
-A prempção do scheduler ocorre com a implementação de um loop que por uma variável `prempt` que quando atinge o valor da variável `INTERV`, o valor da variável é zerado e a função `premptProcess()` é chamada, aplicando diferentes políticas de escalonamento, de acordo com a prioridade, para escolher o próximo processo a ser executado.
+A prempção do scheduler ocorre com a alteração de um loop que na sua nova versão incrementa uma variável `prempt`, quando atinge o valor da variável `INTERV`, a variável `prempt` tem o seu valor zerado e a função `premptProcess()` é chamada. Através dessa função diferentes políticas de escalonamento são aplicadas para escolher o próximo processo a ser executado de acordo com a sua prioridade.
+
 ## Prioridades
-As prioridades foram divididas em 4 níveis, sendo eles:
+Foram definidas 4 níveis de prioridades, sendo eles:
 - Low
 - Medium
 - High
@@ -30,19 +31,19 @@ enum procpriority
   REALTIME
 };	
 ```
+
 ## Escalonamento
 
-Cada prioridade possui uma política de escalonamento diferente e a cada tempo X de ticks, o processo é promovido para a próxima prioridade, até chegar na prioridade `REALTIME`. Esta política gera o aging dos processos e evita que um processo fique em starvation. Neste contexto, foram implementadas as seguintes políticas de escalonamento:
+Cada prioridade possui uma política de escalonamento diferente, e para evitar inanição também foi implementada uma função que aumenta a prioridade dos processos que ficarem X titcks sem serem executados. Neste contexto, foram implementadas as seguintes políticas de escalonamento:
+
 ### Realtime
-Round Robin, a ideia é que o processo que chegou primeiro, seja o primeiro a ser executado, e que os processos sejam executados por um tempo fixo, e depois sejam colocados no final da fila. Para esta implementação, é utilizado o valor `last_cycle` do processo, que é incrementado a cada ciclo em que o processo é escolhido para ser executado. Dessa forma, o round_robin vai buscar o processo com o menor `last_cycle` para ser executado.
+Utiliza o Round Robin, a ideia é que o processo que está a mais tempo sem ser escolhido para ser executado, seja o primeiro a ser executado. Os processos serão executados com um tempo fixo, e depois serão colocados no final da fila novamente. Para esta implementação, é utilizado o valor `last_cycle` do processo, que é incrementado a cada ciclo em que o processo é escolhido para ser executado. Dessa forma, o round_robin vai buscar o processo com o menor `last_cycle` para ser executado.
 
 ### High
-Baseado no CFS (Completely Fair Scheduler), a ideia é que o processo que tem a menor quantidade de tempo de CPU, seja o próximo a ser executado. Para isso, é utilizado o valor `rutime` do processo, que é incrementado a cada ciclo em que o processo está como RUNNING ou foi coloado para executar. Dessa forma, o CFS vai buscar o processo com o menor `rutime` para ser executado. É uma política que não gera starvation e dará maior prioridade para os processos que tem menor tempo de CPU, (io-bound).
+Baseado no CFS (Completely Fair Scheduler), a ideia é que o processo que tem a menor quantidade de tempo de CPU, seja o próximo a ser executado. Para isso, é utilizado o valor `rutime` do processo, que é incrementado a cada tick que o processo for escolhido para ser executado. Dessa forma, o CFS vai buscar o processo com o menor `rutime` para ser executado. Essa política não gera inanição e dará maior prioridade para os processos que tem menor tempo de CPU, (io-bound).
 
 ### Medium
-
-Similar ao escalonador Round Robin, mas considera a quantidade de vezes que o processo foi executado, para que o processo não fique em starvation. A ideia é que o processo que foi executado menos vezes, seja o próximo a ser executado. Dessa forma, se um processo p2 chegar após o processo p1, mas o processo p1 já foi executado 3 vezes, e o processo p2 ainda não foi executado, o processo p2 será executado antes do processo p1 por 3 vezes. Dessa forma, ele recebe um tratamento justo, e não fica em starvation. 
+Similar a política do Round Robin, porém essa considera a quantidade de vezes que o processo foi escolhido para ser executado. A ideia é que o processo que foi executado menos vezes, seja o próximo a ser executado. Dessa forma, se um processo p2 chegar após o processo p1, mas o processo p1 já foi executado 3 vezes, e o processo p2 ainda não foi executado, o processo p2 será executado antes do processo p1 por 3 vezes. Dessa forma, é possivel que aconteça uma inação com os processos mais antigos justamente por já terem sido escolhidos diversas vezes para serem executados. 
 
 ### Low
-
-Utiliza o FCFS (First Come, First Served), utilizando o valor `ctime` do processo para saber qual o processo com o menor `ctime` do array de processo. A ideia é que o processo que chegou primeiro, seja o primeiro a ser executado, o starvation ainda é um problema, se o processo que chegou primeiro, não terminar, os outros processos não serão executados. Mas é uma solução simples e que vai evitar que os processos cheguem e subam para a fila de prioridade alta, sem serem executados.
+Utiliza o FCFS (First Come, First Served), utilizando o valor `ctime` do processo para identificar qual o processo mais antigo. A ideia é que o processo que chegou primeiro, seja o primeiro a ser executado. Com essa política de escalonamento a inação é um problema. No caso do processo mais vvelho não terminar de executar nunca, já que nessa política o processo só para de executar quando ele termina, os outros processos não serão executados. Mas essa solução funciona bem para processos que ficam mais tempo na cpu (cpu-bound).
