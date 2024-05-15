@@ -3,36 +3,38 @@ xv6...
 cpu0: starting 0
 sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap start 58
 init: starting sh
-$ sanity 5
-0: CPU_BOUND
-retime: 5, rutime: 1, stime: 0
-1: S_BOUND
-retime: 25, rutime: 21, stime: 0
-2: IO_BOUND
-retime: 331, rutime: 101, stime: 565624
-3: CPU_BOUND
-retime: 5, rutime: 1, stime: 0
-4: S_BOUND
-retime: 25, rutime: 21, stime: 0
-5: IO_BOUND
-retime: 328, rutime: 101, stime: 560381
-6: CPU_BOUND
-retime: 5, rutime: 1, stime: 0
-7: S_BOUND
-retime: 24, rutime: 21, stime: 0
-8: IO_BOUND
-retime: 312, rutime: 101, stime: 556028
-9: CPU_BOUND
-retime: 5, rutime: 1, stime: 0
-10: S_BOUND
-retime: 26, rutime: 22, stime: 0
-11: IO_BOUND
-retime: 316, rutime: 101, stime: 565199
-12: CPU_BOUND
-retime: 5, rutime: 1, stime: 0
-13: S_BOUND
-retime: 26, rutime: 22, stime: 0
-14: IO_BOUND
-retime: 302, rutime: 101, stime: 563438
-pid 3 sanity: trap 14 err 5 on cpu 0 eip 0xffffffff addr 0xffffffff--kill proc
-$ 
+$ sanity 10
+pid: 4, type: CPU_BOUND, retime: 150, rutime: 1, stime: 0
+pid: 7, type: CPU_BOUND, retime: 134, rutime: 1, stime: 0
+pid: 10, type: CPU_BOUND, retime: 119, rutime: 1, stime: 0
+pid: 13, type: CPU_BOUND, retime: 104, rutime: 1, stime: 0
+pid: 16, type: CPU_BOUND, retime: 89, rutime: 1, stime: 0
+pid: 19, type: CPU_BOUND, retime: 73, rutime: 1, stime: 0
+pid: 22, type: CPU_BOUND, retime: 58, rutime: 1, stime: 0
+pid: 25, type: CPU_BOUND, retime: 43, rutime: 1, stime: 0
+pid: 28, type: CPU_BOUND, retime: 28, rutime: 1, stime: 0
+pid: 31, type: CPU_BOUND, retime: 12, rutime: 1, stime: 0
+pid: 32, type: S_BOUND, retime: 407, rutime: 21, stime: 0
+pid: 29, type: S_BOUND, retime: 419, rutime: 22, stime: 0
+pid: 26, type: S_BOUND, retime: 428, rutime: 21, stime: 0
+pid: 5, type: S_BOUND, retime: 505, rutime: 21, stime: 0
+pid: 8, type: S_BOUND, retime: 509, rutime: 21, stime: 0
+pid: 11, type: S_BOUND, retime: 514, rutime: 21, stime: 0
+pid: 14, type: S_BOUND, retime: 519, rutime: 21, stime: 0
+pid: 17, type: S_BOUND, retime: 499, rutime: 21, stime: 0
+pid: 20, type: S_BOUND, retime: 493, rutime: 21, stime: 0
+pid: 23, type: S_BOUND, retime: 488, rutime: 21, stime: 0
+pid: 6, type: IO_BOUND, retime: 780, rutime: 101, stime: 544249
+pid: 9, type: IO_BOUND, retime: 1230, rutime: 101, stime: 543804
+pid: 12, type: IO_BOUND, retime: 1670, rutime: 101, stime: 543369
+pid: 15, type: IO_BOUND, retime: 2105, rutime: 101, stime: 542939
+pid: 18, type: IO_BOUND, retime: 2515, rutime: 101, stime: 542534
+pid: 21, type: IO_BOUND, retime: 2909, rutime: 101, stime: 542144
+pid: 24, type: IO_BOUND, retime: 3274, rutime: 101, stime: 541784
+pid: 27, type: IO_BOUND, retime: 3614, rutime: 101, stime: 541449
+pid: 30, type: IO_BOUND, retime: 3938, rutime: 101, stime: 541129
+pid: 33, type: IO_BOUND, retime: 4233, rutime: 101, stime: 540839
+Process averages
+type: CPU_BOUND, retime: 27, rutime: 0, turnaround: 27
+type: S_BOUND, retime: 159, rutime: 7, turnaround: 166
+type: IO_BOUND, retime: 875, rutime: 33, turnaround: 181717
