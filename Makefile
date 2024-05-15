@@ -157,6 +157,10 @@ _forktest: forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
+_saninty: saninty.o $(ULIB)
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _saninty saninty.o ulib.o usys.o 
+	$(OBJDUMP) -S _saninty > saninty.asm
+
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
 

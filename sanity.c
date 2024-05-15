@@ -9,6 +9,7 @@
 #include "memlayout.h"
 void empty_loop(int n)
 {
+    int i = 0;
     for (int i = 0; i < n; i++)
     {
         ;
@@ -93,6 +94,9 @@ int main(int argc, char *argv[])
 
     int amount = atoi(argv[1]);
     int numberProcesses = amount * 3;
+    close(open("sanityn.ran", O_CREATE));
+    int numberProcesses = atoi(argv[1]);
+    int amount = numberProcesses * 3;
 
     int retime, rutime, stime;
     int total[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
