@@ -1,0 +1,33 @@
+{
+  "files.associations": {
+    "spinlock.h": "c",
+    "mmu.h": "c",
+    "proc.h": "c",
+    "user.h": "c",
+    "realtime_queue.h": "c",
+    "list.h": "c",
+    "stdlib.h": "c",
+    "types.h": "c",
+    "high_queue.h": "c",
+    "low_queue.h": "c",
+    "fcntl.h": "c",
+    "list": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c",
+    "medium_queue.h": "c",
+    "defs.h": "c",
+    "memlayout.h": "c",
+    "x86.h": "c",
+    "param.h": "c",
+    "stat.h": "c",
+    "syscall.h": "c",
+    "traps.h": "c",
+    "fs.h": "c",
+    "compare": "c",
+    "functional": "c",
+    "tuple": "c",
+    "type_traits": "c"
+  }
+}
