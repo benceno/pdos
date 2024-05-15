@@ -157,9 +157,6 @@ _forktest: forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
-_saninty: saninty.o $(ULIB)
-	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _saninty saninty.o ulib.o usys.o 
-	$(OBJDUMP) -S _saninty > saninty.asm
 
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
@@ -228,6 +225,9 @@ endif
 QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
 
 qemu: fs.img xv6.img
+	$(QEMU) -serial mon:stdio $(QEMUOPTS)
+	
+qemu-output: fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS) > output.txt
 
 qemu-memfs: xv6memfs.img
