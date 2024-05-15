@@ -11,6 +11,7 @@ void empty_loop(int n)
 {
     for (int i = 0; i < n; i++)
     {
+        ;
     }
 }
 enum proctype
