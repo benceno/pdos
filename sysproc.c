@@ -89,3 +89,17 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// ticketget, ticketset system call
+int sys_ticketget(void) {
+  return myproc()->ticket;
+}
+
+int sys_ticketset(void) {
+  int new_ticket;
+
+  argint(0, &new_ticket);
+  myproc()->ticket = new_ticket;
+
+  return 0;
+}

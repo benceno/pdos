@@ -88,6 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->ticket = 10; //UNUSED proc일 때 ticket 10으로 초기화
 
   release(&ptable.lock);
 
