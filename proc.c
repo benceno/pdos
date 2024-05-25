@@ -339,24 +339,14 @@ scheduler(void)
     //무작위 random 수 뽑기 / ticket 총합 저장할 변수 선언
     random_num = random();
     total_ticket = 0;
-    
-    p = ptable.proc;
-    while (1) {
-      if(p->state != RUNNABLE) {
-        p++;
-        if (p >= &ptable.proc[NPROC]) {
-          p = ptable.proc;
-        }
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
         continue;
-      }
 
       // 현재 process까지의 ticket 총합이 random_num보다 같거나 크다면 해당 proc를 실행한다. 작다면 total에 더해나간다.
       if ((total_ticket + p->ticket) < random_num) {
         total_ticket += p->ticket;
-        p++;
-        if (p >= &ptable.proc[NPROC]) {
-          p = ptable.proc;
-        }
         continue;
       }
 
@@ -374,16 +364,7 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
-      break;
-
-      p++;
-      if (p >= &ptable.proc[NPROC]) {
-        p = ptable.proc;
-      }
     }
-    // for(; ; p++){
-
-    // }
     release(&ptable.lock);
 
   }
