@@ -347,14 +347,15 @@ scheduler(void)
 
       // 현재 process까지의 ticket 총합이 random_num보다 같거나 크다면 해당 proc를 실행한다. 작다면 total에 더해나간다.
       if ((total_ticket + p->ticket) < random_num) {
+        //cprintf("\nrunnable pid : %d", p->pid);
         total_ticket += p->ticket;
+        //cprintf("pid: %d  | tic: %d  | rand_num: %d | rand_idx: %d | total_ti: %d\n\n", p->pid, p->ticket, random_num, rand_index, total_ticket);
         continue;
       }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      //cprintf("\npid : %d tic: %d random_num: %d total_ti: %d\n", p->pid, p->ticket, random_num, total_ticket);
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;

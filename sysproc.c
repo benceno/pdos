@@ -98,8 +98,10 @@ int sys_ticketget(void) {
 int sys_ticketset(void) {
   int new_ticket;
 
+  acquire(&tickslock);
   argint(0, &new_ticket);
   myproc()->ticket = new_ticket;
+  release(&tickslock);
 
   return 0;
 }
