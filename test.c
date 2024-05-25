@@ -3,6 +3,8 @@
 #include "user.h"
 #include "rand.c"
 
+#define PROC_NUM 5
+
 void exit_child(int pid) {
   // int p;
 
@@ -15,23 +17,35 @@ void exit_child(int pid) {
 int main(int argc, char **argv)
 {
   //int p;
-  int pid[10]; //여러 개 process
+  int pid[PROC_NUM]; //여러 개 process
 
   printf(1, "test start\n");
 
-  //rand test
+  /*rand test
   for (int i = 0; i < 20; i++) {
-    //printf(1, "rand:%d\n", random());
+    printf(1, "rand:%d\n", random());
   }
-  /////////
+  */
 
   //printf(1, "process %d my ticket %d [parent]\n", getpid(), ticketget());
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < PROC_NUM; i++) {
     pid[i] = fork();
     if (pid[i] == 0) {
       //child process
-      ticketset(15 - i);
+      printf(1, "process %d my ticket %d\n", getpid(), ticketget());
+      exit();
+    }
+  }
+    for(int i = 0; i < PROC_NUM; i++)
+    exit_child(pid[i]);
+
+
+  for (int i = 0; i < PROC_NUM; i++) {
+    pid[i] = fork();
+    if (pid[i] == 0) {
+      //child process
+      ticketset(12 + i*2);
       printf(1, "process %d my ticket %d\n", getpid(), ticketget());
       exit();
     }
@@ -51,7 +65,7 @@ int main(int argc, char **argv)
   // }
 
 
-  for(int i = 0; i < 10; i++)
+  for(int i = 0; i < PROC_NUM; i++)
     exit_child(pid[i]);
   exit();
 }
