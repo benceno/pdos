@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "rand.c"
 
 struct {
   struct spinlock lock;
@@ -325,6 +326,8 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  int random_num;
+  int total_ticket;
   c->proc = 0;
   
   for(;;){
@@ -333,13 +336,34 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+    //무작위 random 수 뽑기 / ticket 총합 저장할 변수 선언
+    random_num = random();
+    total_ticket = 0;
+    
+    p = ptable.proc;
+    while (1) {
+      if(p->state != RUNNABLE) {
+        p++;
+        if (p >= &ptable.proc[NPROC]) {
+          p = ptable.proc;
+        }
         continue;
+      }
+
+      // 현재 process까지의 ticket 총합이 random_num보다 같거나 크다면 해당 proc를 실행한다. 작다면 total에 더해나간다.
+      if ((total_ticket + p->ticket) < random_num) {
+        total_ticket += p->ticket;
+        p++;
+        if (p >= &ptable.proc[NPROC]) {
+          p = ptable.proc;
+        }
+        continue;
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+      cprintf("\npid : %d tic: %d random_num: %d total_ti: %d\n", p->pid, p->ticket, random_num, total_ticket);
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -350,7 +374,16 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+      break;
+
+      p++;
+      if (p >= &ptable.proc[NPROC]) {
+        p = ptable.proc;
+      }
     }
+    // for(; ; p++){
+
+    // }
     release(&ptable.lock);
 
   }

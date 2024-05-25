@@ -1,8 +1,6 @@
 #include "rand.h"
-#include "user.h"
 
 int random() {
-  static int rand_index;
   int rand_num;
   
   rand_num = rand_array[rand_index];
