@@ -3,17 +3,29 @@
 #include "user.h"
 #include "fcntl.h"
 
+char buf[512];
+
 void
 save(int fd, int argc, char *argv[])
 {
   int i;
+  int n;
 
+  // prevent overwriting the file
+  n = read(fd, buf, sizeof(buf));
+
+  // add a newline if the file is not empty
+  if(n > 0)
+  {
+    write(fd, "\n", 1);
+  }
+
+  // write new data to the file
   for(i = 2; i < argc; i++)
   {
     write(fd, argv[i], strlen(argv[i]));
-    printf(1, "%s", argv[i]);
+    write(fd, " ", 1);
   }
-
 }
 
 int main(int argc, char *argv[])
@@ -36,6 +48,5 @@ int main(int argc, char *argv[])
     save(fd, argc, argv);
     close(fd);
   }
-
   exit();
 }
