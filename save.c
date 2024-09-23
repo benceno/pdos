@@ -34,13 +34,13 @@ int main(int argc, char *argv[])
 
   if(argc <= 1)
   {
-    printf(1, "save: need 2 arguments\n");
+    printf(2, "save: need 2 arguments\n");
     exit();
   }
 
   if((fd = open(argv[1], O_RDWR | O_CREATE)) < 0)
   {
-    printf(1, "save: cannot open %s\n", argv[1]);
+    printf(2, "save: cannot open %s\n", argv[1]);
     exit();
   }
   else
