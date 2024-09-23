@@ -35,7 +35,7 @@ printint(int fd, int xx, int base, int sgn)
     putc(fd, buf[i]);
 }
 
-// Print to the given fd. Only understands %d, %x, %p, %s.
+// Print to the given fd. Only understands %d, %x, %p, %s, %f.
 void
 printf(int fd, const char *fmt, ...)
 {
@@ -72,6 +72,11 @@ printf(int fd, const char *fmt, ...)
       } else if(c == 'c'){
         putc(fd, *ap);
         ap++;
+      } else if (c == 'f'){
+        int val = *ap;
+        printint(fd, val / 100, 10, 0);
+        putc(fd, '.');
+        printint(fd, (val < 0 ? -val : val) % 100, 10, 0);
       } else if(c == '%'){
         putc(fd, c);
       } else {
