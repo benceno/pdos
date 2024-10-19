@@ -15,6 +15,8 @@
 #include "proc.h"
 #include "x86.h"
 
+#define LEFT_ARROW          0xE4
+#define RIGHT_ARROW         0xE5
 static void consputc(int);
 
 static int panicked = 0;
@@ -128,8 +130,10 @@ panic(char *s)
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
 
+
+int back_counter = 0;
 static void
-cgaputc(int c)
+cgaputc(int c, int flag)
 {
   int pos;
 
@@ -139,12 +143,21 @@ cgaputc(int c)
   outb(CRTPORT, 15);
   pos |= inb(CRTPORT+1);
 
-  if(c == '\n')
-    pos += 80 - pos%80;
-  else if(c == BACKSPACE){
-    if(pos > 0) --pos;
-  } else
-    crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  switch(c) {
+    case '\n':
+      pos += 80 - pos%80;
+      break;
+    case BACKSPACE:
+      if(pos > 0) --pos;
+      break;
+    case LEFT_ARROW:
+      if(pos > 0) --pos;
+      break;
+    case RIGHT_ARROW:
+      break;
+    default:
+      crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  }
 
   if(pos < 0 || pos > 25*80)
     panic("pos under/overflow");
@@ -159,8 +172,20 @@ cgaputc(int c)
   outb(CRTPORT+1, pos>>8);
   outb(CRTPORT, 15);
   outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
+
+  if (c != LEFT_ARROW && c != RIGHT_ARROW && flag != 1) crt[pos] = ' ' | 0x0700;
 }
+
+
+#define INPUT_BUF 128
+struct {
+  char buf[INPUT_BUF];
+  uint r;  // Read index
+  uint w;  // Write index
+  uint e;  // Edit index
+  uint rightmost;
+} input;
+
 
 void
 consputc(int c)
@@ -171,20 +196,27 @@ consputc(int c)
       ;
   }
 
-  if(c == BACKSPACE){
-    uartputc('\b'); uartputc(' '); uartputc('\b');
-  } else
-    uartputc(c);
-  cgaputc(c);
+  switch (c) {
+    case BACKSPACE:
+      // uartputc prints to Linux's terminal
+      uartputc('\b'); uartputc(' '); uartputc('\b');  // uart is writing to the linux shell
+      break;
+    case LEFT_ARROW:
+      uartputc('\b');
+      break;
+    case RIGHT_ARROW:
+      if (input.e < input.rightmost) {
+        uartputc(input.buf[input.e % INPUT_BUF]);
+        cgaputc(input.buf[input.e % INPUT_BUF], 1);
+        input.e++;
+      }
+      break;
+    default:
+      uartputc(c);
+  }
+  if (c != RIGHT_ARROW) cgaputc(c, 0);
 }
 
-#define INPUT_BUF 128
-struct {
-  char buf[INPUT_BUF];
-  uint r;  // Read index
-  uint w;  // Write index
-  uint e;  // Edit index
-} input;
 
 #define C(x)  ((x)-'@')  // Control-x
 
@@ -213,6 +245,16 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
+      case LEFT_ARROW:
+        if (input.e != input.w) {
+          input.e--;
+          consputc(c);
+        }
+        break;
+      case RIGHT_ARROW:
+        consputc(RIGHT_ARROW);
+        break;
+ 
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
