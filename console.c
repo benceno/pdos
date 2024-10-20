@@ -237,12 +237,9 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
-
-
 int is_operator(char c) {
     return c == '+' || c == '-' || c == '*' || c == '/';
 }
-
 int calculate_expression(char *expr, int len) {
     int num1 = 0, num2 = 0;
     char op = 0;  // Initialize operator to zero
@@ -253,7 +250,6 @@ int calculate_expression(char *expr, int len) {
         num1 = num1 * 10 + (expr[i] - '0');
         i++;
     }
-
     // Get the operator
     if (i < len && is_operator(expr[i])) {
         op = expr[i++];
@@ -439,8 +435,6 @@ void consoleintr(int (*getc)(void)) {
     procdump();  // Now call procdump() without cons.lock held
   }
 }
-
-
 
 int
 consoleread(struct inode *ip, char *dst, int n)
