@@ -14,8 +14,10 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
+#include "history.h"
 
 
+<<<<<<< Updated upstream
 #define KEY_LEFT  0xE2
 #define KEY_RIGHT 0xE3
 
@@ -30,6 +32,13 @@ int copylen = 0; // Tracks the number of copied characters
 #define MAX_CMD_LEN 128       // Maximum length of each command
 char history[MAX_HISTORY][MAX_CMD_LEN];  // History buffer
 int history_count = 0;
+=======
+#define KEY_Down        0xE2
+#define KEY_UP          0xE3
+#define KEY_LF          0xE4
+#define KEY_RT          0xE5
+int back_counter = 0;
+>>>>>>> Stashed changes
 
 
 
@@ -159,7 +168,38 @@ cgaputc(int c)
 
   if(c == '\n')
     pos += 80 - pos%80;
+<<<<<<< Updated upstream
   else if(c == BACKSPACE){
+=======
+  else if(c == KEY_RT){
+    if (back_counter < 0){
+    pos++;
+    back_counter++;
+    outb(CRTPORT+1, pos);
+    }
+    return;
+  }
+  else if(c == KEY_LF){
+    if(pos%80 - 2 > 0){
+     --pos;
+     --back_counter;
+    outb(CRTPORT+1, pos);
+    }
+    return;
+  }else if (c == KEY_UP) {
+        if (history_index > 0) {
+            cprintf("\r%s", history[history_index % HISTORY_SIZE]); // Print the command from history
+            history_index--; 
+            pos = strlen(history[history_index % HISTORY_SIZE]); // Set cursor to end of command
+        }
+    } else if (c == KEY_Down) {
+        if (history_index < history_count - 1) {
+            cprintf("\r%s", history[history_index % HISTORY_SIZE]); // Print the command from history
+            history_index++;
+            pos = strlen(history[history_index % HISTORY_SIZE]); // Set c
+        }
+  }else if(c == BACKSPACE){
+>>>>>>> Stashed changes
     if(pos > 0) --pos;
   } else {
         // Shift characters to the right to make space for the new character
@@ -270,7 +310,13 @@ consoleintr(int (*getc)(void))
         }
       }
       break;
+<<<<<<< Updated upstream
 
+=======
+    case KEY_UP:
+      cgaputc(c);
+      break;
+>>>>>>> Stashed changes
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;

@@ -1,5 +1,5 @@
 // Shell.
-
+#include "history.h"
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
@@ -141,34 +141,64 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
-int
-main(void)
-{
-  static char buf[100];
-  int fd;
+int main(void) {
+    static char buf[100];
+    int fd;
 
-  // Ensure that three file descriptors are open.
-  while((fd = open("console", O_RDWR)) >= 0){
-    if(fd >= 3){
-      close(fd);
-      break;
+    // Ensure that three file descriptors are open.
+    while((fd = open("console", O_RDWR)) >= 0) {
+        if(fd >= 3) {
+            close(fd);
+            break;
+        }
     }
-  }
 
-  // Read and run input commands.
-  while(getcmd(buf, sizeof(buf)) >= 0){
-    if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
-      buf[strlen(buf)-1] = 0;  // chop \n
-      if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
-      continue;
+    // Read and run input commands.
+    while(getcmd(buf, sizeof(buf)) >= 0) {
+        // Check for the history command
+        if (strcmp(buf, "history\n") == 0) {
+            // Print only the last command from history
+            if (history_count > 0) {
+                int last_index = (history_count - 1) % HISTORY_SIZE; // Get last command index
+                printf(1, "%s\n", history[last_index]);  // Print the last command
+            
+            }
+
+            // Wait for the user to press Enter again
+            char wait_buf[10]; // Buffer for waiting for Enter
+            while (1) {
+                // Get user input
+                if (getcmd(wait_buf, sizeof(wait_buf)) < 0) {
+                    // If getcmd fails, break the loop
+                    break;
+                }
+                if (wait_buf[0] == '\n') { // Check for Enter key
+                    break; // Exit history command mode
+                }
+            }
+            continue; // Skip the rest of the loop for the history command
+        }
+
+        // Handle 'cd' command
+        if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ') {
+            // Chdir must be called by the parent, not the child.
+            buf[strlen(buf) - 1] = 0;  // chop \n
+            if (chdir(buf + 3) < 0) {
+                printf(2, "cannot cd %s\n", buf + 3);
+            }
+            add_to_history(buf); // Add the command to history
+            continue;
+        }
+
+        add_to_history(buf); // Add the command to history
+
+        // Fork a new process to run the command
+        if (fork1() == 0) {
+            runcmd(parsecmd(buf));
+        }
+        wait(); // Wait for the child process to finish
     }
-    if(fork1() == 0)
-      runcmd(parsecmd(buf));
-    wait();
-  }
-  exit();
+    exit(); // Exit the shell
 }
 
 void
