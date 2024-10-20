@@ -17,9 +17,10 @@
 #include "history.h"
 
 
-<<<<<<< Updated upstream
-#define KEY_LEFT  0xE2
-#define KEY_RIGHT 0xE3
+#define KEY_Down        0xE2
+#define KEY_UP          0xE3
+#define KEY_LEFT  0xE4
+#define KEY_RIGHT 0xE5
 
 #define COPY_BUF_SIZE 128  // Define a reasonable size for the buffer
 
@@ -27,20 +28,7 @@ char copy_buffer[COPY_BUF_SIZE];
 int copy_mode = 0;  // 1 when in copy mode, 0 otherwise
 int copylen = 0; // Tracks the number of copied characters
 
-
-#define MAX_HISTORY 10        // Maximum number of commands to keep in history
-#define MAX_CMD_LEN 128       // Maximum length of each command
-char history[MAX_HISTORY][MAX_CMD_LEN];  // History buffer
-int history_count = 0;
-=======
-#define KEY_Down        0xE2
-#define KEY_UP          0xE3
-#define KEY_LF          0xE4
-#define KEY_RT          0xE5
-int back_counter = 0;
->>>>>>> Stashed changes
-
-
+int back_counter;
 
 static void consputc(int);
 
@@ -168,10 +156,7 @@ cgaputc(int c)
 
   if(c == '\n')
     pos += 80 - pos%80;
-<<<<<<< Updated upstream
-  else if(c == BACKSPACE){
-=======
-  else if(c == KEY_RT){
+  else if(c == KEY_RIGHT){
     if (back_counter < 0){
     pos++;
     back_counter++;
@@ -179,7 +164,7 @@ cgaputc(int c)
     }
     return;
   }
-  else if(c == KEY_LF){
+  else if(c == KEY_LEFT){
     if(pos%80 - 2 > 0){
      --pos;
      --back_counter;
@@ -199,7 +184,6 @@ cgaputc(int c)
             pos = strlen(history[history_index % HISTORY_SIZE]); // Set c
         }
   }else if(c == BACKSPACE){
->>>>>>> Stashed changes
     if(pos > 0) --pos;
   } else {
         // Shift characters to the right to make space for the new character
@@ -286,7 +270,7 @@ consoleintr(int (*getc)(void))
       break;
 
     // Left arrow key handling
-    case 0xE2:  // Left arrow key (assuming 0xE2 corresponds to left arrow)
+    case KEY_LEFT:  // Left arrow key (assuming 0xE2 corresponds to left arrow)
       if (cursor_pos > 0) {  // Prevent moving past the beginning
         cursor_pos--;
         consputc('\b');  // Visually move the cursor left
@@ -294,7 +278,7 @@ consoleintr(int (*getc)(void))
       break;
 
     // Right arrow key handling
-    case 0xE3:  // Right arrow key (assuming 0xE3 corresponds to right arrow)
+    case KEY_RIGHT:  // Right arrow key (assuming 0xE3 corresponds to right arrow)
       if (cursor_pos < input.e) {  // Prevent moving past the end
         cursor_pos++;
         consputc(input.buf[cursor_pos - 1 % INPUT_BUF]);  // Move cursor right visually
@@ -310,13 +294,9 @@ consoleintr(int (*getc)(void))
         }
       }
       break;
-<<<<<<< Updated upstream
-
-=======
     case KEY_UP:
       cgaputc(c);
       break;
->>>>>>> Stashed changes
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
