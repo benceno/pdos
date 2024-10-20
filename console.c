@@ -15,9 +15,21 @@
 #include "proc.h"
 #include "x86.h"
 
-#define KEY_LF          0xE4
-#define KEY_RT          0xE5
-int back_counter = 0;
+
+#define KEY_LEFT  0xE2
+#define KEY_RIGHT 0xE3
+
+#define COPY_BUF_SIZE 128  // Define a reasonable size for the buffer
+
+char copy_buffer[COPY_BUF_SIZE];
+int copy_mode = 0;  // 1 when in copy mode, 0 otherwise
+int copylen = 0; // Tracks the number of copied characters
+
+
+#define MAX_HISTORY 10        // Maximum number of commands to keep in history
+#define MAX_CMD_LEN 128       // Maximum length of each command
+char history[MAX_HISTORY][MAX_CMD_LEN];  // History buffer
+int history_count = 0;
 
 
 
@@ -217,23 +229,23 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
-
 void
 consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
+  static int cursor_pos = 0;  // Tracks the current cursor position in the buffer
 
   acquire(&cons.lock);
-  while((c = getc()) >= 0){
-    switch(c){
+  while((c = getc()) >= 0) {
+    switch(c) {
     case C('P'):  // Process listing.
-      // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
-            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+            input.buf[(input.e-1) % INPUT_BUF] != '\n') {
         input.e--;
+        cursor_pos = input.e;  // Reset cursor position to end of buffer
         consputc(BACKSPACE);
       }
       break;
@@ -243,17 +255,57 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-    case KEY_RT:
-      cgaputc(c);
+      // Handle Ctrl + S (start copying)
+    case C('S'):
+      copy_mode = 1;  // Enter copy mode
+      copylen = 0;    // Reset the copy buffer
       break;
-    case KEY_LF:
-      cgaputc(c);
+
+    // Left arrow key handling
+    case 0xE2:  // Left arrow key (assuming 0xE2 corresponds to left arrow)
+      if (cursor_pos > 0) {  // Prevent moving past the beginning
+        cursor_pos--;
+        consputc('\b');  // Visually move the cursor left
+      }
       break;
+
+    // Right arrow key handling
+    case 0xE3:  // Right arrow key (assuming 0xE3 corresponds to right arrow)
+      if (cursor_pos < input.e) {  // Prevent moving past the end
+        cursor_pos++;
+        consputc(input.buf[cursor_pos - 1 % INPUT_BUF]);  // Move cursor right visually
+      }
+      break;
+
+    // Handle Ctrl + F (paste copied text)
+    case C('F'):
+      for(int i = 0; i < copylen; i++){
+        if(input.e-input.r < INPUT_BUF){  // Ensure there's space in the input buffer
+          input.buf[input.e++ % INPUT_BUF] = copy_buffer[i];
+          consputc(copy_buffer[i]);
+        }
+      }
+      break;
+
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
+
+
+      if(copy_mode && copylen < COPY_BUF_SIZE){
+
+        copy_buffer[copylen++]=c;
+      }
+        for(int i = input.e; i > cursor_pos; i--) {
+        input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+        }
+        input.buf[cursor_pos % INPUT_BUF] = c;  // Insert the new character at the cursor position
+        input.e++;  // Increment end index
+        cursor_pos++;  // Move cursor position to the right after insertion
         consputc(c);
+
+        
+
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
           wakeup(&input.r);
@@ -263,10 +315,12 @@ consoleintr(int (*getc)(void))
     }
   }
   release(&cons.lock);
+
   if(doprocdump) {
-    procdump();  // now call procdump() wo. cons.lock held
+    procdump();  // Now call procdump() without cons.lock held
   }
 }
+
 
 int
 consoleread(struct inode *ip, char *dst, int n)
