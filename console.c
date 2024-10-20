@@ -238,6 +238,7 @@ struct {
 
 #define C(x)  ((x)-'@')  // Control-x
 
+
 int is_operator(char c) {
     return c == '+' || c == '-' || c == '*' || c == '/';
 }
@@ -270,6 +271,90 @@ int calculate_expression(char *expr, int len) {
     for (; i < len; i++) {
         if (expr[i] != ' ' && !is_operator(expr[i]) && (expr[i] < '0' || expr[i] > '9')) {
             return -1;  // Invalid character in expression
+void
+consoleintr(int (*getc)(void))
+{
+  int c, doprocdump = 0;
+  static int cursor_pos = 0;  // Tracks the current cursor position in the buffer
+
+  acquire(&cons.lock);
+  while((c = getc()) >= 0) {
+    switch(c) {
+    case C('P'):  // Process listing.
+      doprocdump = 1;
+      break;
+    case C('U'):  // Kill line.
+      while(input.e != input.w &&
+            input.buf[(input.e-1) % INPUT_BUF] != '\n') {
+        input.e--;
+        cursor_pos = input.e;  // Reset cursor position to end of buffer
+        consputc(BACKSPACE);
+      }
+      break;
+    case C('H'): case '\x7f':  // Backspace
+      if(input.e != input.w){
+        input.e--;
+        consputc(BACKSPACE);
+      }
+      break;
+      // Handle Ctrl + S (start copying)
+    case C('S'):
+      copy_mode = 1;  // Enter copy mode
+      copylen = 0;    // Reset the copy buffer
+      break;
+
+    // Left arrow key handling
+    case KEY_LEFT:  // Left arrow key (assuming 0xE2 corresponds to left arrow)
+      // if (cursor_pos > 0) {  // Prevent moving past the beginning
+      //   cursor_pos--;
+      //   consputc('\b');  // Visually move the cursor left
+      // }
+      cgaputc(c);
+      break;
+
+    // Right arrow key handling
+    case KEY_RIGHT:  // Right arrow key (assuming 0xE3 corresponds to right arrow)
+      // if (cursor_pos < input.e) {  // Prevent moving past the end
+      //   cursor_pos++;
+      //   consputc(input.buf[cursor_pos - 1 % INPUT_BUF]);  // Move cursor right visually
+      // }
+      cgaputc(c);
+      break;
+
+    // Handle Ctrl + F (paste copied text)
+    case C('F'):
+      for(int i = 0; i < copylen; i++){
+        if(input.e-input.r < INPUT_BUF){  // Ensure there's space in the input buffer
+          input.buf[input.e++ % INPUT_BUF] = copy_buffer[i];
+          consputc(copy_buffer[i]);
+        }
+      }
+      break;
+    case KEY_UP:
+      cgaputc(c);
+      break;
+    default:
+      if(c != 0 && input.e-input.r < INPUT_BUF){
+        c = (c == '\r') ? '\n' : c;
+
+
+      if(copy_mode && copylen < COPY_BUF_SIZE){
+
+        copy_buffer[copylen++]=c;
+      }
+        for(int i = input.e; i > cursor_pos; i--) {
+        input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+        }
+        input.buf[cursor_pos % INPUT_BUF] = c;  // Insert the new character at the cursor position
+        input.e++;  // Increment end index
+        cursor_pos++;  // Move cursor position to the right after insertion
+        consputc(c);
+
+        
+
+        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+          input.w = input.e;
+          wakeup(&input.r);
         }
     }
 
@@ -441,6 +526,14 @@ void consoleintr(int (*getc)(void)) {
 }
 
 
+  }
+  release(&cons.lock);
+
+  if(doprocdump) {
+    procdump();  // Now call procdump() without cons.lock held
+  }
+}
+
 
 int
 consoleread(struct inode *ip, char *dst, int n)
@@ -506,4 +599,3 @@ consoleinit(void)
 
   ioapicenable(IRQ_KBD, 0);
 }
-
