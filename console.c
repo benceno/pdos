@@ -14,6 +14,21 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
+#include "history.h"
+
+
+#define KEY_Down        0xE2
+#define KEY_UP          0xE3
+#define KEY_LEFT  0xE4
+#define KEY_RIGHT 0xE5
+
+#define COPY_BUF_SIZE 128  // Define a reasonable size for the buffer
+
+char copy_buffer[COPY_BUF_SIZE];
+int copy_mode = 0;  // 1 when in copy mode, 0 otherwise
+int copylen = 0; // Tracks the number of copied characters
+
+int back_counter;
 
 static void consputc(int);
 
@@ -141,10 +156,45 @@ cgaputc(int c)
 
   if(c == '\n')
     pos += 80 - pos%80;
-  else if(c == BACKSPACE){
+  else if(c == KEY_RIGHT){
+    if (back_counter < 0){
+    pos++;
+    back_counter++;
+    outb(CRTPORT+1, pos);
+    }
+    return;
+  }
+  else if(c == KEY_LEFT){
+    if(pos%80 - 2 > 0){
+     --pos;
+     --back_counter;
+    outb(CRTPORT+1, pos);
+    }
+    return;
+  }else if (c == KEY_UP) {
+        if (history_index > 0) {
+            cprintf("\r%s", history[history_index % HISTORY_SIZE]); // Print the command from history
+            history_index--; 
+            pos = strlen(history[history_index % HISTORY_SIZE]); // Set cursor to end of command
+        }
+    } else if (c == KEY_Down) {
+        if (history_index < history_count - 1) {
+            cprintf("\r%s", history[history_index % HISTORY_SIZE]); // Print the command from history
+            history_index++;
+            pos = strlen(history[history_index % HISTORY_SIZE]); // Set c
+        }
+  }else if(c == BACKSPACE){
     if(pos > 0) --pos;
-  } else
-    crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  } else {
+        // Shift characters to the right to make space for the new character
+        int end_pos = 24 * 80 - 1;  // The last position on the screen
+        for (int i = end_pos; i >= pos; i--) {
+            crt[i] = crt[i - 1];  // Shift characters one position to the right
+        }
+
+        crt[pos] = (c & 0xff) | 0x0700;  // Insert the new character
+        pos++;
+    }
 
   if(pos < 0 || pos > 25*80)
     panic("pos under/overflow");
@@ -188,49 +238,209 @@ struct {
 
 #define C(x)  ((x)-'@')  // Control-x
 
-void
-consoleintr(int (*getc)(void))
-{
-  int c, doprocdump = 0;
-
-  acquire(&cons.lock);
-  while((c = getc()) >= 0){
-    switch(c){
-    case C('P'):  // Process listing.
-      // procdump() locks cons.lock indirectly; invoke later
-      doprocdump = 1;
-      break;
-    case C('U'):  // Kill line.
-      while(input.e != input.w &&
-            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
-        input.e--;
-        consputc(BACKSPACE);
-      }
-      break;
-    case C('H'): case '\x7f':  // Backspace
-      if(input.e != input.w){
-        input.e--;
-        consputc(BACKSPACE);
-      }
-      break;
-    default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
-        c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
-        consputc(c);
-        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
-          input.w = input.e;
-          wakeup(&input.r);
-        }
-      }
-      break;
-    }
-  }
-  release(&cons.lock);
-  if(doprocdump) {
-    procdump();  // now call procdump() wo. cons.lock held
-  }
+int is_operator(char c) {
+    return c == '+' || c == '-' || c == '*' || c == '/';
 }
+
+int calculate_expression(char *expr, int len) {
+    int num1 = 0, num2 = 0;
+    char op = 0;  // Initialize operator to zero
+    int i = 0;
+
+    // Extract the first number
+    while (i < len && expr[i] >= '0' && expr[i] <= '9') {
+        num1 = num1 * 10 + (expr[i] - '0');
+        i++;
+    }
+
+    // Get the operator
+    if (i < len && is_operator(expr[i])) {
+        op = expr[i++];
+    } else {
+        return -1;  // Invalid expression if no operator is found
+    }
+
+    // Extract the second number
+    while (i < len && expr[i] >= '0' && expr[i] <= '9') {
+        num2 = num2 * 10 + (expr[i] - '0');
+        i++;
+    }
+
+    // Validate the remaining characters
+    for (; i < len; i++) {
+        if (expr[i] != ' ' && !is_operator(expr[i]) && (expr[i] < '0' || expr[i] > '9')) {
+            return -1;  // Invalid character in expression
+        }
+    }
+
+    // Perform the calculation based on the operator
+    switch (op) {
+        case '+': return num1 + num2;
+        case '-': return num1 - num2;
+        case '*': return num1 * num2;
+        case '/': return (num2 != 0) ? num1 / num2 : -1;  // Avoid division by zero
+        default: return -1;  // Invalid operator
+    }
+}
+
+void itoa(int num, char *buf, int buf_size) {
+    int i = 0;
+    int is_negative = (num < 0);  // Determine if the number is negative
+
+    if (is_negative) {
+        num = -num;  // Convert to positive for processing
+    }
+
+    // Convert number to string
+    do {
+        if (i < buf_size - 1) {  // Ensure we don't overflow the buffer
+            buf[i++] = (num % 10) + '0';
+        }
+        num /= 10;
+    } while (num > 0);
+
+    // Add negative sign if the number was negative
+    if (is_negative && i < buf_size - 1) {
+        buf[i++] = '-';
+    }
+
+    buf[i] = '\0';  // Null-terminate the string
+
+    // Reverse the string to get the correct order
+    for (int j = 0; j < i / 2; j++) {
+        char temp = buf[j];
+        buf[j] = buf[i - j - 1];
+        buf[i - j - 1] = temp;
+    }
+}
+
+void consoleintr(int (*getc)(void)) {
+    int c, doprocdump = 0;
+    static char expr_buf[32];
+    static int expr_len = 0;
+    char result_str[16];  // Buffer for storing the result of calculations
+    static int cursor_pos = 0;  // Tracks the current cursor position in the buffer
+    static char last_char = 0;  // To keep track of the last character input
+    static int copy_mode = 0;   // Flag for copy mode
+    static char copy_buffer[COPY_BUF_SIZE];  // Buffer for copied text
+    static int copylen = 0;  // Length of copied text
+
+    acquire(&cons.lock);
+    while((c = getc()) >= 0) {
+        switch(c) {
+            case C('P'):  // Process listing.
+                doprocdump = 1;
+                break;
+            case C('U'):  // Kill line.
+                while(input.e != input.w && input.buf[(input.e - 1) % INPUT_BUF] != '\n') {
+                    input.e--;
+                    cursor_pos = input.e;  // Reset cursor position to end of buffer
+                    consputc(BACKSPACE);
+                }
+                expr_len = 0;  // Clear the expression buffer
+                last_char = 0;  // Reset last character
+                break;
+            case C('H'): case '\x7f':  // Backspace
+                if(input.e != input.w) {
+                    input.e--;
+                    cursor_pos--;  // Move cursor position back
+                    consputc(BACKSPACE);
+                }
+                if(expr_len > 0) expr_len--;  // Manage backspace in the input buffer
+                last_char = 0;  // Reset last character
+                break;
+            case C('S'):  // Ctrl + S to start copying
+                copy_mode = 1;  // Enter copy mode
+                copylen = 0;    // Reset the copy buffer
+                break;
+            case C('F'):  // Ctrl + F to paste copied text
+                for(int i = 0; i < copylen; i++) {
+                    if(input.e - input.r < INPUT_BUF) {  // Ensure there's space in the input buffer
+                        input.buf[input.e++ % INPUT_BUF] = copy_buffer[i];
+                        consputc(copy_buffer[i]);
+                    }
+                }
+                break;
+            // Left arrow key handling
+            case KEY_LEFT:  // Left arrow key
+                cgaputc(c);
+                break;
+            // Right arrow key handling
+            case KEY_RIGHT:  // Right arrow key
+                cgaputc(c);
+                break;
+            // Up arrow key handling (you can add functionality if needed)
+            case KEY_UP:
+                cgaputc(c);
+                break;
+            default:
+                if(c != 0 && input.e - input.r < INPUT_BUF) {
+                    c = (c == '\r') ? '\n' : c;  // Normalize carriage return to newline
+
+                    // If in copy mode, store the character in the copy buffer
+                    if(copy_mode && copylen < COPY_BUF_SIZE) {
+                        copy_buffer[copylen++] = c;
+                    }
+
+                    // Insert the new character at the cursor position
+                    for(int i = input.e; i > cursor_pos; i--) {
+                        input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+                    }
+                    input.buf[cursor_pos % INPUT_BUF] = c;  // Insert the character
+                    input.e++;  // Increment end index
+                    cursor_pos++;  // Move cursor position to the right after insertion
+                    consputc(c);
+
+                    // Store valid characters in the calculation buffer
+                    if(expr_len < sizeof(expr_buf) - 1) {
+                        // Allow only digits, operators, and spaces
+                        if ((c >= '0' && c <= '9') || is_operator(c) || c == ' ' || c == '=' || c == '?') {
+                            expr_buf[expr_len++] = c;
+                            expr_buf[expr_len] = 0;  // Null-terminate the string
+
+                            // Check for the calculation trigger sequence "=?"
+                            if(last_char == '=' && c == '?') {
+                                int result = calculate_expression(expr_buf, expr_len - 2); // Remove '=' and '?' for calculation
+                                if (result != -1) {
+                                    // Clear the expression
+                                    for (int i = 0; i < expr_len; i++) {
+                                        consputc(BACKSPACE);
+                                        input.e--;
+                                    }
+
+                                    // Convert the result to string
+                                    itoa(result, result_str, sizeof(result_str));
+
+                                    // Display the result
+                                    for (int i = 0; result_str[i] != '\0'; i++) {
+                                        input.buf[input.e++ % INPUT_BUF] = result_str[i];
+                                        consputc(result_str[i]);
+                                    }
+                                }
+                                expr_len = 0;  // Reset the buffer
+                            }
+
+                            // Update last character to the current one
+                            last_char = c;
+                        }
+                    }
+
+                    if(c == '\n' || c == C('D') || input.e == input.r + INPUT_BUF) {
+                        input.w = input.e;
+                        wakeup(&input.r);
+                    }
+                }
+                break;
+        }
+    }
+    release(&cons.lock);
+
+    if(doprocdump) {
+        procdump();  // Now call procdump() without holding cons.lock
+    }
+}
+
+
 
 int
 consoleread(struct inode *ip, char *dst, int n)
