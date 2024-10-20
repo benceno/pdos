@@ -271,18 +271,20 @@ consoleintr(int (*getc)(void))
 
     // Left arrow key handling
     case KEY_LEFT:  // Left arrow key (assuming 0xE2 corresponds to left arrow)
-      if (cursor_pos > 0) {  // Prevent moving past the beginning
-        cursor_pos--;
-        consputc('\b');  // Visually move the cursor left
-      }
+      // if (cursor_pos > 0) {  // Prevent moving past the beginning
+      //   cursor_pos--;
+      //   consputc('\b');  // Visually move the cursor left
+      // }
+      cgaputc(c);
       break;
 
     // Right arrow key handling
     case KEY_RIGHT:  // Right arrow key (assuming 0xE3 corresponds to right arrow)
-      if (cursor_pos < input.e) {  // Prevent moving past the end
-        cursor_pos++;
-        consputc(input.buf[cursor_pos - 1 % INPUT_BUF]);  // Move cursor right visually
-      }
+      // if (cursor_pos < input.e) {  // Prevent moving past the end
+      //   cursor_pos++;
+      //   consputc(input.buf[cursor_pos - 1 % INPUT_BUF]);  // Move cursor right visually
+      // }
+      cgaputc(c);
       break;
 
     // Handle Ctrl + F (paste copied text)
