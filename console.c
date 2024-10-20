@@ -237,9 +237,11 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
+
 int is_operator(char c) {
     return c == '+' || c == '-' || c == '*' || c == '/';
 }
+
 int calculate_expression(char *expr, int len) {
     int num1 = 0, num2 = 0;
     char op = 0;  // Initialize operator to zero
@@ -250,6 +252,7 @@ int calculate_expression(char *expr, int len) {
         num1 = num1 * 10 + (expr[i] - '0');
         i++;
     }
+
     // Get the operator
     if (i < len && is_operator(expr[i])) {
         op = expr[i++];
@@ -267,8 +270,18 @@ int calculate_expression(char *expr, int len) {
     for (; i < len; i++) {
         if (expr[i] != ' ' && !is_operator(expr[i]) && (expr[i] < '0' || expr[i] > '9')) {
             return -1;  // Invalid character in expression
-          }
+        }
     }
+
+    // Perform the calculation based on the operator
+    switch (op) {
+        case '+': return num1 + num2;
+        case '-': return num1 - num2;
+        case '*': return num1 * num2;
+        case '/': return (num2 != 0) ? num1 / num2 : -1;  // Avoid division by zero
+        default: return -1;  // Invalid operator
+    }
+}
 
 void itoa(int num, char *buf, int buf_size) {
     int i = 0;
@@ -428,13 +441,6 @@ void consoleintr(int (*getc)(void)) {
 }
 
 
-  }
-  release(&cons.lock);
-
-  if(doprocdump) {
-    procdump();  // Now call procdump() without cons.lock held
-  }
-}
 
 int
 consoleread(struct inode *ip, char *dst, int n)
