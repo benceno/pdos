@@ -158,10 +158,13 @@ int main(void) {
         // Check for the history command
         if (strcmp(buf, "history\n") == 0) {
             // Print only the last command from history
-            if (history_count > 0) {
-                int last_index = (history_count - 1) % HISTORY_SIZE; // Get last command index
-                printf(1, "%s\n", history[last_index]);  // Print the last command
+            // if (history_count > 0) {
+            //     int last_index = (history_count - 1) % HISTORY_SIZE; // Get last command index
+            //     printf(1, "%s\n", history[last_index]);  // Print the last command
             
+            // }
+            for (int i=0; i < history_count ; i++){
+              printf(1, "%s\n", history[i]);
             }
 
             // Wait for the user to press Enter again
