@@ -159,22 +159,6 @@ cgaputc(int c)
 
   if(c == '\n')
     pos += 80 - pos%80;
-  else if(c == KEY_RT){
-    if (back_counter < 0){
-    pos++;
-    back_counter++;
-    outb(CRTPORT+1, pos);
-    }
-    return;
-  }
-  else if(c == KEY_LF){
-    if(pos%80 - 2 > 0){
-     --pos;
-     --back_counter;
-    outb(CRTPORT+1, pos);
-    }
-    return;
-  }
   else if(c == BACKSPACE){
     if(pos > 0) --pos;
   } else {
