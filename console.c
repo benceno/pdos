@@ -205,9 +205,7 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
-void
-consoleintr(int (*getc)(void))
-{
+void consoleintr(int (*getc)(void)) {
   int c, doprocdump = 0;
   static int cursor_pos = 0;  // Tracks the current cursor position in the buffer
 
@@ -218,21 +216,20 @@ consoleintr(int (*getc)(void))
       doprocdump = 1;
       break;
     case C('U'):  // Kill line.
-      while(input.e != input.w &&
-            input.buf[(input.e-1) % INPUT_BUF] != '\n') {
+      while(input.e != input.w && input.buf[(input.e-1) % INPUT_BUF] != '\n') {
         input.e--;
         cursor_pos = input.e;  // Reset cursor position to end of buffer
         consputc(BACKSPACE);
       }
       break;
     case C('H'): case '\x7f':  // Backspace
-      if(input.e != input.w){
+      if(input.e != input.w) {
         input.e--;
         consputc(BACKSPACE);
       }
       break;
 
-      // Handle Ctrl + S (start copying)
+    // Handle Ctrl + S (start copying)
     case C('S'):
       copy_mode = 1;  // Enter copy mode
       copylen = 0;    // Reset the copy buffer
@@ -256,8 +253,8 @@ consoleintr(int (*getc)(void))
 
     // Handle Ctrl + F (paste copied text)
     case C('F'):
-      for(int i = 0; i < copylen; i++){
-        if(input.e-input.r < INPUT_BUF){  // Ensure there's space in the input buffer
+      for(int i = 0; i < copylen; i++) {
+        if(input.e-input.r < INPUT_BUF) {  // Ensure there's space in the input buffer
           input.buf[input.e++ % INPUT_BUF] = copy_buffer[i];
           consputc(copy_buffer[i]);
         }
@@ -265,25 +262,19 @@ consoleintr(int (*getc)(void))
       break;
 
     default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
+      if(c != 0 && input.e-input.r < INPUT_BUF) {
         c = (c == '\r') ? '\n' : c;
-
-
-      if(copy_mode && copylen < COPY_BUF_SIZE){
-
-        copy_buffer[copylen++]=c;
-      }
+        if(copy_mode && copylen < COPY_BUF_SIZE) {
+          copy_buffer[copylen++] = c;
+        }
         for(int i = input.e; i > cursor_pos; i--) {
-        input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+          input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
         }
         input.buf[cursor_pos % INPUT_BUF] = c;  // Insert the new character at the cursor position
         input.e++;  // Increment end index
         cursor_pos++;  // Move cursor position to the right after insertion
         consputc(c);
-
-        
-
-        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF) {
           input.w = input.e;
           wakeup(&input.r);
         }
@@ -297,7 +288,6 @@ consoleintr(int (*getc)(void))
     procdump();  // Now call procdump() without cons.lock held
   }
 }
-
 
 int
 consoleread(struct inode *ip, char *dst, int n)
