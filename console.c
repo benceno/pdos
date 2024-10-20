@@ -15,6 +15,7 @@
 #include "proc.h"
 #include "x86.h"
 
+
 #define KEY_LEFT  0xE2
 #define KEY_RIGHT 0xE3
 
@@ -30,7 +31,6 @@ int copylen = 0; // Tracks the number of copied characters
 char history[MAX_HISTORY][MAX_CMD_LEN];  // History buffer
 int history_count = 0;
 
-// static int cursor_pos = 0;  // Start with cursor at position 0
 
 
 static void consputc(int);
@@ -159,10 +159,34 @@ cgaputc(int c)
 
   if(c == '\n')
     pos += 80 - pos%80;
+  else if(c == KEY_RT){
+    if (back_counter < 0){
+    pos++;
+    back_counter++;
+    outb(CRTPORT+1, pos);
+    }
+    return;
+  }
+  else if(c == KEY_LF){
+    if(pos%80 - 2 > 0){
+     --pos;
+     --back_counter;
+    outb(CRTPORT+1, pos);
+    }
+    return;
+  }
   else if(c == BACKSPACE){
     if(pos > 0) --pos;
-  } else
-    crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  } else {
+        // Shift characters to the right to make space for the new character
+        int end_pos = 24 * 80 - 1;  // The last position on the screen
+        for (int i = end_pos; i >= pos; i--) {
+            crt[i] = crt[i - 1];  // Shift characters one position to the right
+        }
+
+        crt[pos] = (c & 0xff) | 0x0700;  // Insert the new character
+        pos++;
+    }
 
   if(pos < 0 || pos > 25*80)
     panic("pos under/overflow");
@@ -231,7 +255,6 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-
       // Handle Ctrl + S (start copying)
     case C('S'):
       copy_mode = 1;  // Enter copy mode
@@ -363,4 +386,3 @@ consoleinit(void)
 
   ioapicenable(IRQ_KBD, 0);
 }
-
