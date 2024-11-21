@@ -224,21 +224,25 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   char *mem;
   uint a;
 
+  //边界检查：确保新的进程大小不超过KERNBASE
   if(newsz >= KERNBASE)
     return 0;
   if(newsz < oldsz)
     return oldsz;
 
-  a = PGROUNDUP(oldsz);
-  for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
+  a = PGROUNDUP(oldsz); // 页对齐
+  for(; a < newsz; a += PGSIZE) // 按页分配内存
+  { 
+    mem = kalloc(); // 为每页分配物理内存
     if(mem == 0){
       cprintf("allocuvm out of memory\n");
+      cprintf("The stack have grown into the heap\n");
       deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
-    memset(mem, 0, PGSIZE);
-    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+    memset(mem, 0, PGSIZE); //清空原有数据
+    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0) // 映射
+    {
       cprintf("allocuvm out of memory (2)\n");
       deallocuvm(pgdir, newsz, oldsz);
       kfree(mem);
@@ -313,7 +317,7 @@ clearpteu(pde_t *pgdir, char *uva)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pde_t *pgdir, uint sz, uint stackbase)
 {
   pde_t *d;
   pte_t *pte;
@@ -337,6 +341,24 @@ copyuvm(pde_t *pgdir, uint sz)
       goto bad;
     }
   }
+
+  // Copy the stack
+  for(i = stackbase; i < KERNBASE - PGSIZE; i += PGSIZE){
+    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+      panic("copyuvm: pte should exist");
+    if(!(*pte & PTE_P))
+      panic("copyuvm: page not present");
+    pa = PTE_ADDR(*pte);
+    flags = PTE_FLAGS(*pte);
+    if((mem = kalloc()) == 0)
+      goto bad;
+    memmove(mem, (char*)P2V(pa), PGSIZE);
+    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
+      kfree(mem);
+      goto bad;
+    }
+  }
+
   return d;
 
 bad:

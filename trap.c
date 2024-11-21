@@ -77,7 +77,36 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-
+    
+  // 新增触发页错误（Page Fault）的情况
+  case T_PGFLT:
+  
+  if (rcr2() < USERTOP)// 条件检查：确保页面错误地址在用户栈范围内。
+  {
+    cprintf("page error %x ",rcr2());
+    cprintf("stack pos : %x\n", myproc()->stackbase);
+    // 为用户栈分配新的页面
+    if ((myproc()->stackbase = allocuvm(myproc()->pgdir, myproc()->stackbase - 1 * PGSIZE,
+    myproc()->stackbase)) == 0)
+    {
+      myproc()->killed = 1;
+    }
+    myproc()->stackbase-=PGSIZE; // 更新用户栈的栈顶位置
+    cprintf("create a new page %x\n", myproc()->stackbase);
+      //clearpteu(myproc()->pgdir, (char *) (myproc()->stackbase - PGSIZE));
+    if (myproc()->stackbase > KERNBASE - 1)
+    {
+      myproc()->killed = 1;
+      cprintf("There is no space for the stack\n");
+      exit();
+    }
+    return;
+  }
+  else
+  {
+     myproc()->killed = 1;
+    break;
+  }
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){

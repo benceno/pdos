@@ -159,9 +159,9 @@ int
 growproc(int n)
 {
   uint sz;
-  struct proc *curproc = myproc();
+  struct proc *curproc = myproc(); //当前进程
 
-  sz = curproc->sz;
+  sz = curproc->sz; //当前进程的大小
   if(n > 0){
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -190,7 +190,7 @@ fork(void)
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz, curproc->stackbase)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;

@@ -8,6 +8,10 @@
 #define KERNBASE 0x80000000         // First kernel virtual address
 #define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
 
+// User address space layout
+#define USERTOP 0x7FFFF000          // User address space top, leaving room for stack growth
+#define STACKPAGES 8                // Number of pages initially allocated for stack
+
 #define V2P(a) (((uint) (a)) - KERNBASE)
 #define P2V(a) ((void *)(((char *) (a)) + KERNBASE))
 
