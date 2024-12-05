@@ -54,6 +54,15 @@ trap(struct trapframe *tf)
       wakeup(&ticks);
       release(&tickslock);
     }
+    // Increment the tick counter for the currently running process
+    if (myproc() && myproc()->state == RUNNING) {
+      myproc()->ticks++; // Increment the ticks counter
+
+      // Check if the process has reached the 10-tick time slice
+      if (myproc()->ticks >= 10) {
+        yield(); // Give up the CPU
+      }
+    }
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:

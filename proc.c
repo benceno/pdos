@@ -336,16 +336,24 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 
+      // Print process ID when it starts
+      cprintf("Running process ID: %d\n", p->pid);
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->ticks = 0;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
+      // Log runtime when the process yields
+      cprintf("Process ID: %d ran for %d ticks\n", p->pid, p->ticks);
+      p->ticks = 0;
+      
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
