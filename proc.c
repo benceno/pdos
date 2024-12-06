@@ -341,10 +341,7 @@ scheduler(void)
       cprintf("Scheduler starts running process %d\n", p->pid);
 
       for (ticks_run = 1; ticks_run <= 10; ticks_run++) {
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        if (p->state != RUNNABLE)
+        if (p->state == ZOMBIE)
             break;
 
         c->proc = p;
