@@ -345,7 +345,7 @@ scheduler(void)
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
         if (p->state != RUNNABLE)
-            break
+            break;
 
         c->proc = p;
         switchuvm(p);
