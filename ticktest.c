@@ -3,16 +3,7 @@
 #include "user.h"
 
 #define NUM_PROCESSES 5
-#define WORK_ITERATIONS 50
 
-void busy_work(int id) {
-  for (int i = 0; i < WORK_ITERATIONS; i++) {
-    printf(1, "Process %d: iteration %d\n", id, i);
-    // Simulate some work
-    for (volatile int j = 0; j < 1000000; j++) {}
-  }
-  exit();
-}
 
 int main(void) {
   int i;
@@ -24,8 +15,8 @@ int main(void) {
       printf(1, "Fork failed\n");
       exit();
     } else if (pid == 0) {
-      // Child process: perform busy work
-      busy_work(i + 1);
+      // Child process: sleep
+      sleep(10);
     }
   }
 
