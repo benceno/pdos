@@ -7,7 +7,6 @@
 
 int main(void) {
   int i;
-  printf(1, "Testing scheduler with %d processes\n", NUM_PROCESSES);
 
   for (i = 0; i < NUM_PROCESSES; i++) {
     int pid = fork();
@@ -25,6 +24,5 @@ int main(void) {
     wait();
   }
 
-  printf(1, "Scheduler test completed\n");
   exit();
 }
