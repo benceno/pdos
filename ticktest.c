@@ -4,18 +4,21 @@
 
 #define NUM_PROCESSES 5
 
+void busy_work() {
+  for (int i = 0; i <= 100000; i++){
+    continue;
+  }
+  exit();
+}
 
 int main(void) {
   int i;
 
   for (i = 0; i < NUM_PROCESSES; i++) {
     int pid = fork();
-    if (pid < 0) {
-      printf(1, "Fork failed\n");
-      exit();
-    } else if (pid == 0) {
+    if (pid == 0) {
       // Child process: sleep
-      sleep(10);
+      busy_work();
     }
   }
 
