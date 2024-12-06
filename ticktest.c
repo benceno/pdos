@@ -5,7 +5,7 @@
 #define NUM_PROCESSES 5
 
 void busy_work() {
-  for (int i = 0; i <= 100000; i++){
+  for (int i = 0; i <= 100000000; i++){
     continue;
   }
   exit();
