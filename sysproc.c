@@ -89,3 +89,25 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_setburst(void)
+{
+    int burst;
+
+    if(argint(0, &burst) < 0 || burst <= 0)
+        return -1;  // Invalid burst time
+    myproc()->burst_time = burst;
+    return 0;
+}
+
+int
+sys_setconfidence(void)
+{
+    int conf;
+
+    if(argint(0, &conf) < 0 || conf < 0 || conf > 99)
+        return -1;  // Confidence must be in the range 0-99
+    myproc()->confidence = conf;
+    return 0;
+}

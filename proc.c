@@ -311,6 +311,26 @@ wait(void)
   }
 }
 
+static unsigned int seed = 12345;
+
+int rand()
+{
+    seed = (1103515245 * seed + 12345) % 2147483648;
+    return seed;
+}
+
+int
+no_runnable_proc_except(struct proc *exclude_proc)
+{
+    struct proc *p;
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->state == RUNNABLE && p != exclude_proc)
+            return 0; // Found another runnable process
+    }
+    return 1; // No other runnable process
+}
+
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -319,40 +339,67 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void
-scheduler(void)
+void scheduler(void)
 {
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-  
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
+    struct proc *p;
+    struct cpu *c = mycpu();
+    c->proc = 0;
 
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    for (;;) {
+        sti();  // Enable interrupts
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+        acquire(&ptable.lock);
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+        struct proc *shortest_proc = 0;
+        int min_burst = 1e9;  // Start with a very high burst time
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        // Find the shortest process that is runnable
+        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+            if (p->state == RUNNABLE && p->burst_time < min_burst) {
+                shortest_proc = p;
+                min_burst = p->burst_time;
+            }
+        }
+
+        if (shortest_proc != 0) {
+            // Generate a random number to check against the process's confidence
+            int rand_num = rand() % 100;
+            cprintf("Scheduler: Random Number=%d, Process PID=%d, Confidence=%d\n",
+                    rand_num, shortest_proc->pid, shortest_proc->confidence);
+
+            // Decide whether to run this process
+            if (rand_num <= shortest_proc->confidence || shortest_proc->confidence == 0) {
+                // Run the process
+                p = shortest_proc;
+                cprintf("Scheduler: Running Process PID=%d, Burst=%d, Confidence=%d\n",
+                        p->pid, p->burst_time, p->confidence);
+
+                c->proc = p;
+                switchuvm(p);
+                p->state = RUNNING;
+
+                // Simulate process execution by "switching"
+                swtch(&(c->scheduler), p->context);
+                switchkvm();
+
+                // After running, reduce the burst time or mark the process as finished
+                p->burst_time -= 1;  // Decrease burst time (simulate running)
+
+                // If the process is done (burst_time reaches 0), mark it as sleeping
+                if (p->burst_time == 0) {
+                    p->state = SLEEPING;  // Or change to another state like ZOMBIE
+                    cprintf("Scheduler: Process PID=%d finished, transitioning to SLEEPING\n", p->pid);
+                }
+
+                // Reset after process execution
+                c->proc = 0;
+            } else {
+                cprintf("Scheduler: Skipping Process PID=%d due to low confidence\n", shortest_proc->pid);
+            }
+        }
+
+        release(&ptable.lock);
     }
-    release(&ptable.lock);
-
-  }
 }
 
 // Enter scheduler.  Must hold only ptable.lock
