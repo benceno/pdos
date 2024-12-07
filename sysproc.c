@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "defs.h"
+#include "strace.h"
 
 int
 sys_fork(void)
@@ -88,4 +90,56 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int
+sys_strace(void)
+{
+  int enable;
+  if(argint(0, &enable) < 0)
+    return -1;
+  strace_enabled = enable;
+  return 0;
+}
+
+int
+sys_stracedump(void)
+{
+  stracedump();
+  return 0;
+}
+
+int
+sys_strace_filter(void)
+{
+    char *filter;
+    if(argstr(0, &filter) < 0)
+        return -1;
+    
+    safestrcpy(trace_flags.syscall_filter, filter, sizeof(trace_flags.syscall_filter));
+    trace_flags.one_time_filter = 1;
+    
+    return 0;
+}
+
+int
+sys_strace_success(void)
+{
+    int enable;
+    if(argint(0, &enable) < 0)
+        return -1;
+    trace_flags.success_only = enable;
+    trace_flags.one_time_filter = 1;
+    return 0;
+}
+
+int
+sys_strace_fail(void)
+{
+    int enable;
+    if(argint(0, &enable) < 0)
+        return -1;
+    trace_flags.fail_only = enable;
+    trace_flags.one_time_filter = 1;
+    return 0;
 }

@@ -20,3 +20,8 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_strace 22
+#define SYS_stracedump 23 
+#define SYS_strace_filter 24
+#define SYS_strace_success 25
+#define SYS_strace_fail 26

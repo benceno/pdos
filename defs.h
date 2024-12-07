@@ -10,6 +10,16 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+
+//strace 
+extern int strace_enabled;
+
+//strace dump
+void            init_trace_buffer(void);
+void            add_trace_event(int pid, const char *cmd_name, const char *sys_name, int ret_val);
+void            stracedump(void); 
+
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
