@@ -111,3 +111,11 @@ sys_setconfidence(void)
     myproc()->confidence = conf;
     return 0;
 }
+
+int sys_setpriority(void) {
+    int prio;
+    if (argint(0, &prio) < 0 || prio < 1 || prio > 3)
+        return -1;
+    myproc()->priority = prio;
+    return 0;
+}

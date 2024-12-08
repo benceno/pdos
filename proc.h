@@ -8,6 +8,7 @@ struct cpu {
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
   struct proc *proc;           // The process running on this cpu or null
+  int wrr_counter[4];       // Time slices left for priorities 1, 2, 3 (index 0 unused)
 };
 
 extern struct cpu cpus[NCPU];
@@ -51,6 +52,9 @@ struct proc {
   char name[16];               // Process name (debugging)
   int burst_time;  // Burst time of the process
   int confidence;  // Confidence level (0 to 99)
+  uint creation_order; // New field to track creation order
+  int priority;  // Priority: 1 (RR), 2 (SJF with confidence), 3 (FCFS)
+  int last_run_time;        // Tracks the last time the process ran (used for RR)
 };
 
 // Process memory is laid out contiguously, low addresses first:
