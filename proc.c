@@ -8,7 +8,7 @@
 #include "spinlock.h"
 
 
-static uint global_creation_order = 0;
+//static uint global_creation_order = 0;
 
 struct {
   struct spinlock lock;
@@ -100,8 +100,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->creation_order = global_creation_order++;
-  p->priority = 3;
+  //p->creation_order = global_creation_order++;
+  p->creation_order = ticks;
+  p->priority = 1;
   p->burst_time = rand()%20;
   p->confidence = rand()%100;
 
@@ -349,6 +350,7 @@ no_runnable_proc_except(struct proc *exclude_proc)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
 void scheduler(void) {
     struct proc *p;
     struct cpu *c = mycpu();
@@ -399,11 +401,13 @@ void scheduler(void) {
             if (rr_proc) {
                 selected_proc = rr_proc;
                 cprintf("Running process PID=%d from Priority 1 (RR)\n", selected_proc->pid);
+                cprintf("Running process age=%d from Priority 1 (RR)\n", selected_proc->age);
 
                 c->proc = selected_proc;
                 switchuvm(selected_proc);
                 selected_proc->state = RUNNING;
                 selected_proc->last_run_time = ticks;  // Update the last run time
+                selected_proc->age=0;
 
                 // Save process state during the switch
                 swtch(&(c->scheduler), selected_proc->context);
@@ -430,13 +434,13 @@ void scheduler(void) {
             if (sjf_proc) {
                 int rand_num = rand() % 100;
                 if (rand_num <= sjf_proc->confidence || sjf_proc->confidence == 0) {
-                    cprintf("Scheduler: Running Process PID=%d, Burst=%d, Confidence=%d\n",
+                    cprintf("Scheduler: Running Process PID=%d, Burst=%d, Confidence=%d (SJF)\n",
                             sjf_proc->pid, sjf_proc->burst_time, sjf_proc->confidence);
 
                     c->proc = sjf_proc;
                     switchuvm(sjf_proc);
                     sjf_proc->state = RUNNING;
-
+                    sjf_proc->age=0;
                     swtch(&(c->scheduler), sjf_proc->context);
                     switchkvm();
                     c->proc = 0;
@@ -461,7 +465,7 @@ void scheduler(void) {
                 c->proc = selected_proc;
                 switchuvm(selected_proc);
                 selected_proc->state = RUNNING;
-
+                selected_proc->age=0;
                 swtch(&(c->scheduler), selected_proc->context);
                 switchkvm();
 
@@ -677,4 +681,25 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+void increment_age(void) {
+  acquire(&ptable.lock);
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if ( (p->state == RUNNABLE) && (p->pid > 2) )
+      p->age++;
+    else
+      p->age=0;
+  }
+  release(&ptable.lock);
+}
+void change_queue(void) {
+  acquire(&ptable.lock);
+  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if ( (p->priority != 3) && (p->pid > 2) && (p->age >= 50) ) {
+      p->age=0;
+      p->priority++;
+      p->creation_order = ticks;
+    }
+  }
+  release(&ptable.lock);  
 }

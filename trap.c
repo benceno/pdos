@@ -104,7 +104,9 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER){
-    //cprintf("process id: %d\n",myproc()->pid);
+    // cprintf("process id: %d\n",myproc()->pid);
+    increment_age();
+    change_queue();
     if (ticks % 5 ==0)
       yield();
   }

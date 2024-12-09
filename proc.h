@@ -55,6 +55,7 @@ struct proc {
   uint creation_order; // New field to track creation order
   int priority;  // Priority: 1 (RR), 2 (SJF with confidence), 3 (FCFS)
   int last_run_time;        // Tracks the last time the process ran (used for RR)
+  int age;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -62,3 +63,6 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+void increment_age(void);
+void change_queue(void);
