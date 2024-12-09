@@ -56,6 +56,7 @@ struct proc {
   int priority;  // Priority: 1 (RR), 2 (SJF with confidence), 3 (FCFS)
   int last_run_time;        // Tracks the last time the process ran (used for RR)
   int age;
+  int quantum_used;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -64,5 +65,4 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
-void increment_age(void);
-void change_queue(void);
+void age_stuff(void);

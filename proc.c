@@ -102,7 +102,7 @@ found:
   p->pid = nextpid++;
   //p->creation_order = global_creation_order++;
   p->creation_order = ticks;
-  p->priority = 1;
+  p->priority = 3;
   p->burst_time = rand()%20;
   p->confidence = rand()%100;
 
@@ -396,6 +396,10 @@ void scheduler(void) {
                     rr_proc = p;
                     oldest_run = p->last_run_time;
                 }
+                if ( (p->state == RUNNABLE) && (p->pid > 2) )
+                  p->age++;
+                // else
+                //   p->age=0;
             }
 
             if (rr_proc) {
@@ -682,22 +686,17 @@ procdump(void)
     cprintf("\n");
   }
 }
-void increment_age(void) {
+
+void age_stuff(void) {
   acquire(&ptable.lock);
   for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if ( (p->state == RUNNABLE) && (p->pid > 2) )
       p->age++;
     else
       p->age=0;
-  }
-  release(&ptable.lock);
-}
-void change_queue(void) {
-  acquire(&ptable.lock);
-  for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-    if ( (p->priority != 3) && (p->pid > 2) && (p->age >= 50) ) {
+    if ( (p->priority != 1) && (p->pid > 2) && (p->age >= 80) ) {
       p->age=0;
-      p->priority++;
+      p->priority--;
       p->creation_order = ticks;
     }
   }
