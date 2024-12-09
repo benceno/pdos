@@ -26,6 +26,7 @@ int uptime(void);
 int setburst(int burst);
 int setconfidence(int confidence);
 int setpriority(int priority);
+int printinfo(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
