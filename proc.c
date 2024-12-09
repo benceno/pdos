@@ -68,6 +68,15 @@ myproc(void) {
   return p;
 }
 
+
+static unsigned int seed = 12345;
+
+int rand()
+{
+    seed = (1103515245 * seed + 12345) % 2147483648;
+    return seed;
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -92,6 +101,9 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->creation_order = global_creation_order++;
+  p->priority = 3;
+  p->burst_time = rand()%20;
+  p->confidence = rand()%100;
 
   release(&ptable.lock);
 
@@ -315,13 +327,7 @@ wait(void)
   }
 }
 
-static unsigned int seed = 12345;
 
-int rand()
-{
-    seed = (1103515245 * seed + 12345) % 2147483648;
-    return seed;
-}
 
 int
 no_runnable_proc_except(struct proc *exclude_proc)
@@ -359,10 +365,10 @@ void scheduler(void) {
 
         acquire(&ptable.lock);
 
-        struct proc *selected_proc = 0;  // Reinitialize selected_proc at the start of each iteration
+        struct proc *selected_proc = 0;
+        int selected_priority = 0;
 
         // WRR logic: Select the next priority queue
-        int selected_priority = 0;
         for (int priority = 1; priority <= 3; priority++) {
             if (c->wrr_counter[priority] > 0) {
                 selected_priority = priority;
@@ -378,7 +384,6 @@ void scheduler(void) {
             c->wrr_counter[3] = weights[3];
         }
 
-        // Process selection logic for each priority
         if (selected_priority == 1) {
             // Round-Robin Scheduler for Priority 1
             struct proc *rr_proc = 0;
@@ -394,6 +399,22 @@ void scheduler(void) {
             if (rr_proc) {
                 selected_proc = rr_proc;
                 cprintf("Running process PID=%d from Priority 1 (RR)\n", selected_proc->pid);
+
+                c->proc = selected_proc;
+                switchuvm(selected_proc);
+                selected_proc->state = RUNNING;
+                selected_proc->last_run_time = ticks;  // Update the last run time
+
+                // Save process state during the switch
+                swtch(&(c->scheduler), selected_proc->context);
+                switchkvm();
+
+                // Process resumes here after switching back
+                if (selected_proc->state == RUNNING) {
+                    selected_proc->state = RUNNABLE;  // Mark it runnable again
+                }
+
+                c->proc = 0;
             }
         } else if (selected_priority == 2) {
             // SJF with Confidence Scheduler for Priority 2
@@ -406,96 +427,70 @@ void scheduler(void) {
                     min_burst = p->burst_time;
                 }
             }
-            if (sjf_proc != 0) {
-                // Generate a random number to check against the process's confidence
+            if (sjf_proc) {
                 int rand_num = rand() % 100;
-                cprintf("Scheduler: Random Number=%d, Process PID=%d, Confidence=%d\n",
-                        rand_num, sjf_proc->pid, sjf_proc->confidence);
-
-                // Decide whether to run this process
                 if (rand_num <= sjf_proc->confidence || sjf_proc->confidence == 0) {
-                    // Run the process
-                    p = sjf_proc;
                     cprintf("Scheduler: Running Process PID=%d, Burst=%d, Confidence=%d\n",
-                            p->pid, p->burst_time, p->confidence);
+                            sjf_proc->pid, sjf_proc->burst_time, sjf_proc->confidence);
 
-                    c->proc = p;
-                    switchuvm(p);
-                    p->state = RUNNING;
+                    c->proc = sjf_proc;
+                    switchuvm(sjf_proc);
+                    sjf_proc->state = RUNNING;
 
-                    // Simulate process execution by "switching"
-                    swtch(&(c->scheduler), p->context);
+                    swtch(&(c->scheduler), sjf_proc->context);
                     switchkvm();
-
-                    // After running, reduce the burst time or mark the process as finished
-                    p->burst_time -= 1;  // Decrease burst time (simulate running)
-
-                    // If the process is done (burst_time reaches 0), mark it as sleeping
-                    if (p->burst_time == 0) {
-                        p->state = SLEEPING;  // Or change to another state like ZOMBIE
-                        cprintf("Scheduler: Process PID=%d finished, transitioning to SLEEPING\n", p->pid);
-                    }
-
-                    // Reset after process execution
                     c->proc = 0;
-                } else {
-                    cprintf("Scheduler: Skipping Process PID=%d due to low confidence\n", sjf_proc->pid);
                 }
             }
         } else if (selected_priority == 3) {
             // FCFS Scheduler for Priority 3
             struct proc *fcfs_proc = 0;
-            
-            for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-              if(p->state == RUNNABLE && p->priority == 3) {
-                if(fcfs_proc == 0 || p->creation_order < fcfs_proc->creation_order) {
-                  fcfs_proc = p;
+            int earliest_order = 1e9;
+
+            for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+                if (p->state == RUNNABLE && p->priority == 3 && p->creation_order < earliest_order) {
+                    fcfs_proc = p;
+                    earliest_order = p->creation_order;
                 }
-              }
             }
-            
+
             if (fcfs_proc) {
                 selected_proc = fcfs_proc;
                 cprintf("Running process PID=%d from Priority 3 (FCFS)\n", selected_proc->pid);
-            }
 
-            // If we found a suitable process, run it.
-            if(fcfs_proc != 0) {
-              p = fcfs_proc;
-              c->proc = p;
-              switchuvm(p);
-              p->state = RUNNING;
+                c->proc = selected_proc;
+                switchuvm(selected_proc);
+                selected_proc->state = RUNNING;
 
-              // Switch to the chosen process. It will release ptable.lock and reacquire it before returning.
-              swtch(&c->scheduler, p->context);
-              switchkvm();
+                swtch(&(c->scheduler), selected_proc->context);
+                switchkvm();
 
-              // Process is done running for now.
-              // It should have changed its p->state before returning to scheduler.
-              c->proc = 0;
+                // Process resumes here after switching back
+                if (selected_proc->state == RUNNING) {
+                    selected_proc->state = RUNNABLE;  // Mark it runnable again
+                }
+
+                c->proc = 0;
             }
         }
 
-        // Fallback: Select any runnable process with priority = 0 if no higher-priority process was selected
-        if (!selected_proc) {
+        // Fallback: Select any runnable process if no priority-based process was executed
+        if (!c->proc) {
+            struct proc *fallback_proc = 0;
+
             for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
                 if (p->state == RUNNABLE && p->priority == 0) {
-                    selected_proc = p;
-                    cprintf("Running process PID=%d from Priority 0 (Fallback)\n", selected_proc->pid);
+                    fallback_proc = p;
                     break;
                 }
             }
-        }
 
-        if (selected_proc) {
-            // Check if the process is not a zombie before running it
-            if (selected_proc->state != ZOMBIE) {
-                // Run the selected process
-                c->proc = selected_proc;
-                selected_proc->last_run_time = ticks;  // Update the last run time
-                switchuvm(selected_proc);
-                selected_proc->state = RUNNING;
-                swtch(&(c->scheduler), selected_proc->context);
+            if (fallback_proc) {
+                cprintf("Running process PID=%d from Priority 0 (Fallback)\n", fallback_proc->pid);
+                c->proc = fallback_proc;
+                switchuvm(fallback_proc);
+                fallback_proc->state = RUNNING;
+                swtch(&(c->scheduler), fallback_proc->context);
                 switchkvm();
                 c->proc = 0;
             }
